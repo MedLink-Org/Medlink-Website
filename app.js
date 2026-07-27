@@ -79,7 +79,46 @@ const Router = {
       btn.classList.toggle('active', btn.dataset.view === view);
     });
     Render.all();
+    NavMenu.close();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+/* ===================== NAV MENU (mobile hamburger) ===================== */
+const NavMenu = {
+  btn: null,
+  nav: null,
+
+  init() {
+    this.btn = document.getElementById('hamburgerBtn');
+    this.nav = document.getElementById('topnav');
+    if (!this.btn || !this.nav) return;
+
+    this.btn.addEventListener('click', () => this.toggle());
+
+    document.addEventListener('click', (e) => {
+      const isOpen = this.nav.classList.contains('open');
+      if (!isOpen) return;
+      if (!this.nav.contains(e.target) && !this.btn.contains(e.target)) {
+        this.close();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 900) this.close();
+    });
+  },
+
+  toggle() {
+    this.nav.classList.toggle('open');
+    this.btn.classList.toggle('open');
+    this.btn.setAttribute('aria-expanded', this.nav.classList.contains('open'));
+  },
+
+  close() {
+    this.nav.classList.remove('open');
+    this.btn.classList.remove('open');
+    this.btn.setAttribute('aria-expanded', 'false');
   }
 };
 
@@ -239,6 +278,7 @@ const Actions = {
 document.addEventListener('DOMContentLoaded', () => {
   DB.init();
   Render.all();
+  NavMenu.init();
 
   document.querySelectorAll('.nav-link').forEach(btn => {
     btn.addEventListener('click', () => Router.go(btn.dataset.view));
