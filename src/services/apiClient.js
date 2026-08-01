@@ -1,4 +1,12 @@
-const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+import { clearAccessToken, getAccessToken } from "./tokenStorage";
+
+export const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
+export function buildApiUrl(path) {
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_URL}${normalizedPath}`;
+}
 
 function getErrorMessage(payload, status) {
   if (typeof payload === "string" && payload.trim()) return payload;
@@ -10,11 +18,13 @@ function getErrorMessage(payload, status) {
 
 export async function request(path, options = {}) {
   const { body, headers, ...requestOptions } = options;
-  const response = await fetch(`${API_URL}${path}`, {
+  const accessToken = getAccessToken();
+  const response = await fetch(buildApiUrl(path), {
     ...requestOptions,
     headers: {
       Accept: "application/json",
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...headers
     },
     body: body === undefined ? undefined : JSON.stringify(body)
@@ -31,7 +41,16 @@ export async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(payload, response.status));
+    if (response.status === 401 && accessToken) {
+      clearAccessToken();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("medlink:unauthorized"));
+      }
+    }
+    const error = new Error(getErrorMessage(payload, response.status));
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
 
   if (

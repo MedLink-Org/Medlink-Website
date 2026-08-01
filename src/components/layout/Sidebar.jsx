@@ -1,25 +1,39 @@
 import {
+  BriefcaseMedical,
   CalendarDays,
   ChartNoAxesCombined,
   LayoutDashboard,
   ReceiptText,
   Stethoscope,
+  UserRound,
   Users
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { hasPermission, PERMISSIONS } from "../../auth/accessControl";
+import { useAuth } from "../../context/AuthContext";
 import { useMedLink } from "../../context/MedLinkContext";
 import { today } from "../../utils/date";
 
 const navigation = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/patients", label: "Patients", icon: Users },
-  { to: "/appointments", label: "Appointments", icon: CalendarDays },
-  { to: "/billing", label: "Billing", icon: ReceiptText },
-  { to: "/reports", label: "Reports", icon: ChartNoAxesCombined }
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permission: PERMISSIONS.DASHBOARD_VIEW },
+  { to: "/patients", label: "Patients", icon: Users, permission: PERMISSIONS.PATIENTS_VIEW },
+  { to: "/doctors", label: "Doctors", icon: UserRound, permission: PERMISSIONS.DOCTORS_VIEW },
+  { to: "/nurses", label: "Nurses", icon: BriefcaseMedical, permission: PERMISSIONS.NURSES_VIEW },
+  { to: "/appointments", label: "Appointments", icon: CalendarDays, permission: PERMISSIONS.APPOINTMENTS_VIEW },
+  { to: "/billing", label: "Billing", icon: ReceiptText, permission: PERMISSIONS.BILLING_VIEW },
+  { to: "/reports", label: "Reports", icon: ChartNoAxesCombined, permission: PERMISSIONS.REPORTS_VIEW }
 ];
 
 export default function Sidebar({ open, onNavigate }) {
-  const { patients, appointments } = useMedLink();
+  const { user } = useAuth();
+  const {
+    patients,
+    doctors,
+    nurses,
+    appointments,
+    error,
+    offlineEnabled
+  } = useMedLink();
   const pendingAppointments = appointments.filter(appointment =>
     appointment.date >= today() && !["Completed", "Cancelled"].includes(appointment.status)
   ).length;
@@ -36,13 +50,17 @@ export default function Sidebar({ open, onNavigate }) {
 
       <nav className="sidebar-nav">
         <span className="nav-label">Workspace</span>
-        {navigation.map(item => {
+        {navigation.filter(item => hasPermission(user?.role, item.permission)).map(item => {
           const Icon = item.icon;
           const count = item.label === "Patients"
             ? patients.length
-            : item.label === "Appointments"
-              ? pendingAppointments
-              : null;
+            : item.label === "Doctors"
+              ? doctors.length
+              : item.label === "Nurses"
+                ? nurses.length
+                : item.label === "Appointments"
+                  ? pendingAppointments
+                  : null;
 
           return (
             <NavLink
@@ -61,11 +79,13 @@ export default function Sidebar({ open, onNavigate }) {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="system-status">
+        <div className={`system-status ${error ? "offline" : ""}`}>
           <span className="status-dot" aria-hidden="true" />
           <div>
-            <strong>System online</strong>
-            <small>Records synced with server</small>
+            <strong>{error ? (offlineEnabled ? "Local records" : "API unavailable") : "System online"}</strong>
+            <small>{error
+              ? (offlineEnabled ? "Changes stay on this device" : "Reconnect to view records")
+              : "Records synced with server"}</small>
           </div>
         </div>
         <p>INS 204 Group 13</p>

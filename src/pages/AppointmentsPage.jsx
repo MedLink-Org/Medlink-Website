@@ -8,12 +8,14 @@ import {
   X
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { hasPermission, PERMISSIONS, ROLES } from "../auth/accessControl";
 import FormField from "../components/common/FormField";
 import PageHeading from "../components/common/PageHeading";
 import PanelHeader from "../components/common/PanelHeader";
 import PersonCell from "../components/common/PersonCell";
 import StatusBadge from "../components/common/StatusBadge";
 import { useMedLink } from "../context/MedLinkContext";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { formatDate, formatLongDate, formatTime, today } from "../utils/date";
 import { doctorName } from "../utils/format";
@@ -30,6 +32,9 @@ function createEmptyAppointment() {
 }
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
+  const canCreateAppointments = hasPermission(user?.role, PERMISSIONS.APPOINTMENTS_CREATE);
+  const canUpdateAppointments = hasPermission(user?.role, PERMISSIONS.APPOINTMENTS_UPDATE);
   const {
     patients,
     doctors,
@@ -47,6 +52,7 @@ export default function AppointmentsPage() {
   const [requestError, setRequestError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingAppointmentId, setUpdatingAppointmentId] = useState("");
+  const patientProfileId = user?.role === ROLES.PATIENT ? user.profileId : "";
 
   const filteredAppointments = useMemo(
     () => appointments
@@ -67,7 +73,7 @@ export default function AppointmentsPage() {
   function validate() {
     const validationErrors = {};
     const requiredFields = {
-      patientId: "Patient",
+      ...(patientProfileId ? {} : { patientId: "Patient" }),
       doctorId: "Doctor",
       date: "Appointment date",
       time: "Appointment time",
@@ -116,7 +122,10 @@ export default function AppointmentsPage() {
     setIsSubmitting(true);
     setStatus("Booking appointment...");
     try {
-      const record = await addAppointment(form);
+      const record = await addAppointment({
+        ...form,
+        patientId: patientProfileId || form.patientId
+      });
       setForm(createEmptyAppointment());
       setStatus(`${record.appointmentId} was booked successfully.`);
       showToast("Appointment booked", `${record.appointmentId} has been added to the clinic schedule.`);
@@ -165,7 +174,7 @@ export default function AppointmentsPage() {
         )}
       />
 
-      <section className="form-panel">
+      {canCreateAppointments && <section className="form-panel">
         <div className="section-heading">
           <span className="section-icon section-icon-green"><CalendarPlus2 /></span>
           <div>
@@ -176,7 +185,7 @@ export default function AppointmentsPage() {
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="form-grid">
-            <FormField label="Patient" htmlFor="appointmentPatient" required hint="Register a new patient first if they are not listed." error={errors.patientId}>
+            {!patientProfileId && <FormField label="Patient" htmlFor="appointmentPatient" required hint="Register a new patient first if they are not listed." error={errors.patientId}>
               <select className={fieldClass("patientId")} id="appointmentPatient" name="patientId" value={form.patientId} onChange={handleChange}>
                 <option value="">Select a registered patient</option>
                 {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(patient => (
@@ -185,7 +194,7 @@ export default function AppointmentsPage() {
                   </option>
                 ))}
               </select>
-            </FormField>
+            </FormField>}
             <FormField label="Doctor" htmlFor="appointmentDoctor" required hint="Specialization is shown beside each doctor." error={errors.doctorId}>
               <select className={fieldClass("doctorId")} id="appointmentDoctor" name="doctorId" value={form.doctorId} onChange={handleChange}>
                 <option value="">Select a doctor</option>
@@ -229,7 +238,7 @@ export default function AppointmentsPage() {
             </div>
           </div>
         </form>
-      </section>
+      </section>}
 
       <section className="panel table-panel">
         <PanelHeader
@@ -283,12 +292,12 @@ export default function AppointmentsPage() {
                     <td><StatusBadge status={appointment.status} /></td>
                     <td>
                       <div className="table-actions">
-                        {appointment.status === "Scheduled" && (
+                        {canUpdateAppointments && appointment.status === "Scheduled" && (
                           <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Checked In")}>
                             <LogIn />Check in
                           </button>
                         )}
-                        {["Scheduled", "Checked In"].includes(appointment.status) && (
+                        {canUpdateAppointments && ["Scheduled", "Checked In"].includes(appointment.status) && (
                           <>
                             <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Completed")}>
                               <Check />Complete
@@ -298,7 +307,7 @@ export default function AppointmentsPage() {
                             </button>
                           </>
                         )}
-                        {!["Scheduled", "Checked In"].includes(appointment.status) && "-"}
+                        {(!canUpdateAppointments || !["Scheduled", "Checked In"].includes(appointment.status)) && "-"}
                       </div>
                     </td>
                   </tr>

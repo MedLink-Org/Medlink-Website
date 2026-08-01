@@ -8,6 +8,7 @@ import {
   ReceiptText
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { hasPermission, PERMISSIONS } from "../auth/accessControl";
 import FormField from "../components/common/FormField";
 import PageHeading from "../components/common/PageHeading";
 import PanelHeader from "../components/common/PanelHeader";
@@ -15,6 +16,7 @@ import PersonCell from "../components/common/PersonCell";
 import StatCard from "../components/common/StatCard";
 import StatusBadge from "../components/common/StatusBadge";
 import { useMedLink } from "../context/MedLinkContext";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { formatDate } from "../utils/date";
 import { formatCurrency } from "../utils/format";
@@ -27,6 +29,8 @@ const emptyBill = {
 };
 
 export default function BillingPage() {
+  const { user } = useAuth();
+  const canManageBilling = hasPermission(user?.role, PERMISSIONS.BILLING_MANAGE);
   const {
     patients,
     bills,
@@ -148,12 +152,12 @@ export default function BillingPage() {
         title="Billing Management"
         titleId="billingHeading"
         description="Issue patient bills, track payment methods, and close balances."
-        actions={(
+        actions={canManageBilling ? (
           <button className="button button-primary" type="button" onClick={focusForm}>
             <FilePlus2 />
             Create bill
           </button>
-        )}
+        ) : null}
       />
 
       <div className="stat-grid stat-grid-three">
@@ -162,7 +166,7 @@ export default function BillingPage() {
         <StatCard icon={BadgeAlert} tone="red" label="Outstanding Balance" value={formatCurrency(outstanding)} caption={`${pendingBills.length} pending bill${pendingBills.length === 1 ? "" : "s"}`} />
       </div>
 
-      <section className="form-panel compact-form-panel" ref={formPanelRef}>
+      {canManageBilling && <section className="form-panel compact-form-panel" ref={formPanelRef}>
         <div className="section-heading">
           <span className="section-icon section-icon-amber"><ReceiptText /></span>
           <div>
@@ -209,7 +213,7 @@ export default function BillingPage() {
             </div>
           </div>
         </form>
-      </section>
+      </section>}
 
       <section className="panel table-panel">
         <PanelHeader
@@ -259,11 +263,13 @@ export default function BillingPage() {
                     <td><strong>{formatCurrency(bill.amount)}</strong></td>
                     <td><StatusBadge status={bill.status} /></td>
                     <td>
-                      {bill.status === "Pending" ? (
+                      {canManageBilling && bill.status === "Pending" ? (
                         <button className="table-action" type="button" disabled={updatingBillId === bill.billId} onClick={() => handleMarkPaid(bill.billId)}>
                           <BadgeCheck />Mark paid
                         </button>
-                      ) : `Paid ${formatDate(bill.datePaid, { day: "numeric", month: "short" })}`}
+                      ) : bill.status === "Paid"
+                        ? `Paid ${formatDate(bill.datePaid, { day: "numeric", month: "short" })}`
+                        : "-"}
                     </td>
                   </tr>
                 );

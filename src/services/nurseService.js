@@ -14,10 +14,23 @@ function toApiNurse(nurse) {
   };
 }
 
+function unwrapNurse(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload || {};
+  }
+  return payload.nurse ?? payload.record ?? payload.item ?? payload;
+}
+
 function normalizeNurse(nurse = {}) {
   return {
     ...nurse,
-    nurseId: nurse.nurseId ?? nurse.nurse_id ?? nurse.id ?? "",
+    nurseId: nurse.nurseId
+      ?? nurse.nurse_id
+      ?? nurse.nurseID
+      ?? nurse.Nurse_ID
+      ?? nurse.id
+      ?? nurse.insertId
+      ?? "",
     firstName: nurse.firstName ?? nurse.first_name ?? "",
     lastName: nurse.lastName ?? nurse.last_name ?? "",
     specialization: nurse.specialization ?? "",
@@ -29,11 +42,12 @@ function normalizeNurse(nurse = {}) {
 
 export async function getAll(options = {}) {
   const response = await request(RESOURCE_PATH, options);
-  return asCollection(response).map(normalizeNurse);
+  return asCollection(response).map(nurse => normalizeNurse(unwrapNurse(nurse)));
 }
 
 export async function getById(id, options = {}) {
-  return normalizeNurse(await request(`${RESOURCE_PATH}/${encodeURIComponent(id)}`, options));
+  const response = await request(`${RESOURCE_PATH}/${encodeURIComponent(id)}`, options);
+  return normalizeNurse(unwrapNurse(response));
 }
 
 export async function create(nurse, options = {}) {
@@ -42,7 +56,7 @@ export async function create(nurse, options = {}) {
     method: "POST",
     body: toApiNurse(nurse)
   });
-  return normalizeNurse({ ...nurse, ...(response || {}) });
+  return normalizeNurse({ ...nurse, ...unwrapNurse(response) });
 }
 
 export async function update(id, nurse, options = {}) {
@@ -51,7 +65,7 @@ export async function update(id, nurse, options = {}) {
     method: "PUT",
     body: toApiNurse(nurse)
   });
-  return normalizeNurse({ ...nurse, ...(response || {}) });
+  return normalizeNurse({ ...nurse, ...unwrapNurse(response) });
 }
 
 async function deleteNurse(id, options = {}) {

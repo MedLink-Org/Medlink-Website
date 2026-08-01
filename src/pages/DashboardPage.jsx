@@ -16,6 +16,7 @@ import {
   Users
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { hasPermission, PERMISSIONS } from "../auth/accessControl";
 import MiniBarChart from "../components/charts/MiniBarChart";
 import EmptyState from "../components/common/EmptyState";
 import PageHeading from "../components/common/PageHeading";
@@ -24,10 +25,12 @@ import PersonCell from "../components/common/PersonCell";
 import StatCard from "../components/common/StatCard";
 import StatusBadge from "../components/common/StatusBadge";
 import { useMedLink } from "../context/MedLinkContext";
+import { useAuth } from "../context/AuthContext";
 import { dateRange, formatDate, formatLongDate, formatTime, today } from "../utils/date";
 import { doctorName, formatCurrency } from "../utils/format";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const {
     appointments,
@@ -38,6 +41,9 @@ export default function DashboardPage() {
   const currentDate = today();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const displayName = user?.firstName || user?.name?.split(/\s+/)[0] || "there";
+  const canManagePatients = hasPermission(user?.role, PERMISSIONS.PATIENTS_MANAGE);
+  const canCreateAppointments = hasPermission(user?.role, PERMISSIONS.APPOINTMENTS_CREATE);
 
   const todaysAppointments = appointments
     .filter(appointment => appointment.date === currentDate && appointment.status !== "Cancelled")
@@ -89,21 +95,21 @@ export default function DashboardPage() {
     <section className="view" aria-labelledby="dashboardHeading">
       <PageHeading
         eyebrow={formatLongDate(currentDate)}
-        title={`${greeting}, Amara`}
+        title={`${greeting}, ${displayName}`}
         titleId="dashboardHeading"
         description="Monitor appointments, arrivals, patient activity, and urgent clinic tasks."
-        actions={(
+        actions={canManagePatients || canCreateAppointments ? (
           <div className="heading-actions">
-            <button className="button button-secondary" type="button" onClick={() => navigate("/patients")}>
+            {canManagePatients && <button className="button button-secondary" type="button" onClick={() => navigate("/patients")}>
               <UserPlus />
               Register patient
-            </button>
-            <button className="button button-primary" type="button" onClick={() => navigate("/appointments")}>
+            </button>}
+            {canCreateAppointments && <button className="button button-primary" type="button" onClick={() => navigate("/appointments")}>
               <CalendarPlus />
               New appointment
-            </button>
+            </button>}
           </div>
-        )}
+        ) : null}
       />
 
       <div className="stat-grid">

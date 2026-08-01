@@ -4,36 +4,65 @@ const RESOURCE_PATH = "/api/doctors";
 
 function toApiDoctor(doctor) {
   return {
-    doctor_id: doctor.doctorId ?? doctor.doctor_id ?? doctor.id,
     first_name: doctor.firstName ?? doctor.first_name,
     last_name: doctor.lastName ?? doctor.last_name,
+    date_of_birth: doctor.dob ?? doctor.dateOfBirth ?? doctor.date_of_birth,
+    contact_info: doctor.phone ?? doctor.contactInfo ?? doctor.contact_info,
+    address: doctor.address,
     specialization: doctor.specialization,
-    room: doctor.room,
-    phone: doctor.phone,
-    email: doctor.email
+    date_of_employment: doctor.dateOfEmployment ?? doctor.date_of_employment
   };
+}
+
+function unwrapDoctor(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload || {};
+  }
+  return payload.doctor ?? payload.record ?? payload.item ?? payload;
+}
+
+function normalizeDate(value) {
+  if (!value || typeof value !== "string") return value || "";
+  if (!value.includes("T")) return value.slice(0, 10);
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Lagos",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date(value));
+  const dateParts = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
 }
 
 function normalizeDoctor(doctor = {}) {
   return {
     ...doctor,
-    doctorId: doctor.doctorId ?? doctor.doctor_id ?? doctor.id ?? "",
+    doctorId: doctor.doctorId
+      ?? doctor.doctor_id
+      ?? doctor.doctorID
+      ?? doctor.Doctor_ID
+      ?? doctor.id
+      ?? doctor.insertId
+      ?? "",
     firstName: doctor.firstName ?? doctor.first_name ?? "",
     lastName: doctor.lastName ?? doctor.last_name ?? "",
+    dob: normalizeDate(doctor.dob ?? doctor.dateOfBirth ?? doctor.date_of_birth),
+    phone: doctor.phone ?? doctor.contactInfo ?? doctor.contact_info ?? "",
+    address: doctor.address ?? "",
     specialization: doctor.specialization ?? "",
-    room: doctor.room ?? "",
-    phone: doctor.phone ?? "",
-    email: doctor.email ?? ""
+    dateOfEmployment: normalizeDate(doctor.dateOfEmployment ?? doctor.date_of_employment)
   };
 }
 
 export async function getAll(options = {}) {
   const response = await request(RESOURCE_PATH, options);
-  return asCollection(response).map(normalizeDoctor);
+  return asCollection(response).map(doctor => normalizeDoctor(unwrapDoctor(doctor)));
 }
 
 export async function getById(id, options = {}) {
-  return normalizeDoctor(await request(`${RESOURCE_PATH}/${encodeURIComponent(id)}`, options));
+  const response = await request(`${RESOURCE_PATH}/${encodeURIComponent(id)}`, options);
+  return normalizeDoctor(unwrapDoctor(response));
 }
 
 export async function create(doctor, options = {}) {
@@ -42,7 +71,7 @@ export async function create(doctor, options = {}) {
     method: "POST",
     body: toApiDoctor(doctor)
   });
-  return normalizeDoctor({ ...doctor, ...(response || {}) });
+  return normalizeDoctor({ ...doctor, ...unwrapDoctor(response) });
 }
 
 export async function update(id, doctor, options = {}) {
@@ -51,7 +80,7 @@ export async function update(id, doctor, options = {}) {
     method: "PUT",
     body: toApiDoctor(doctor)
   });
-  return normalizeDoctor({ ...doctor, ...(response || {}) });
+  return normalizeDoctor({ ...doctor, ...unwrapDoctor(response) });
 }
 
 async function deleteDoctor(id, options = {}) {

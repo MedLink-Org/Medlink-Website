@@ -1,4 +1,4 @@
-import { addDays, today } from "../utils/date";
+import { addDays, today } from "../utils/date.js";
 
 export const doctors = [
   {
@@ -28,6 +28,27 @@ export const doctors = [
     lastName: "Johnson",
     specialization: "Dermatology",
     room: "Room 08"
+  }
+];
+
+export const nurses = [
+  {
+    nurseId: "N01",
+    firstName: "Grace",
+    lastName: "Eze",
+    specialization: "General Nursing",
+    department: "Outpatient",
+    phone: "+234 803 622 1045",
+    email: "grace.eze@medlink.example"
+  },
+  {
+    nurseId: "N02",
+    firstName: "Mariam",
+    lastName: "Okafor",
+    specialization: "Emergency Nursing",
+    department: "Emergency",
+    phone: "+234 806 331 7720",
+    email: "mariam.okafor@medlink.example"
   }
 ];
 
@@ -141,6 +162,7 @@ export function createSeedData() {
   return {
     patients,
     doctors,
+    nurses,
     appointments,
     bills,
     nextPatientId: 7,

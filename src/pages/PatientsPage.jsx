@@ -8,11 +8,13 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { hasPermission, PERMISSIONS } from "../auth/accessControl";
 import FormField from "../components/common/FormField";
 import PageHeading from "../components/common/PageHeading";
 import PanelHeader from "../components/common/PanelHeader";
 import PersonCell from "../components/common/PersonCell";
 import { useMedLink } from "../context/MedLinkContext";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { addDays, formatDate, today } from "../utils/date";
 
@@ -60,6 +62,8 @@ function validatePatient(patient) {
 }
 
 export default function PatientsPage() {
+  const { user } = useAuth();
+  const canManagePatients = hasPermission(user?.role, PERMISSIONS.PATIENTS_MANAGE);
   const { patients, appointments, addPatient } = useMedLink();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -146,7 +150,7 @@ export default function PatientsPage() {
         )}
       />
 
-      <section className="form-panel">
+      {canManagePatients && <section className="form-panel">
         <div className="section-heading">
           <span className="section-icon"><UserRoundPlus /></span>
           <div>
@@ -215,7 +219,7 @@ export default function PatientsPage() {
             </div>
           </div>
         </form>
-      </section>
+      </section>}
 
       <section className="panel table-panel">
         <PanelHeader

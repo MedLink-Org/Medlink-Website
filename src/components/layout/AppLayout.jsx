@@ -8,27 +8,32 @@ import Topbar from "./Topbar";
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { loading, error, reload } = useMedLink();
+  const { loading, error, offlineEnabled, reload } = useMedLink();
 
-  let content = <Outlet />;
+  let content = (
+    <>
+      {error && (
+        <div className="connection-banner" role="status">
+          <CircleAlert />
+          <div>
+            <strong>{offlineEnabled ? "Working with local records" : "Clinic API unavailable"}</strong>
+            <p>{error}</p>
+          </div>
+          <button className="button button-secondary" type="button" onClick={reload}>
+            <RefreshCw />
+            Reconnect
+          </button>
+        </div>
+      )}
+      <Outlet />
+    </>
+  );
   if (loading) {
     content = (
       <div className="data-state" role="status" aria-live="polite">
         <LoaderCircle className="data-state-spinner" />
         <strong>Loading clinic records</strong>
         <p>Connecting to the MedLink API.</p>
-      </div>
-    );
-  } else if (error) {
-    content = (
-      <div className="data-state data-state-error" role="alert">
-        <CircleAlert />
-        <strong>Clinic records could not be loaded</strong>
-        <p>{error}</p>
-        <button className="button button-secondary" type="button" onClick={reload}>
-          <RefreshCw />
-          Try again
-        </button>
       </div>
     );
   }
