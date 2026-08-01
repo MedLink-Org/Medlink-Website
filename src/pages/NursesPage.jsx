@@ -14,10 +14,12 @@ import PersonCell from "../components/common/PersonCell";
 import { useAuth } from "../context/AuthContext";
 import { useMedLink } from "../context/MedLinkContext";
 import { useToast } from "../context/ToastContext";
+import { addDays, formatDate, today } from "../utils/date";
 
 const emptyNurse = {
   firstName: "",
   lastName: "",
+  dob: "",
   specialization: "",
   department: "",
   phone: "",
@@ -32,6 +34,7 @@ function validateNurse(nurse) {
   const requiredFields = {
     firstName: "First name",
     lastName: "Last name",
+    dob: "Date of birth",
     specialization: "Specialization",
     department: "Department",
     phone: "Phone number",
@@ -45,6 +48,9 @@ function validateNurse(nurse) {
   });
   if (nurse.phone && !phonePattern.test(nurse.phone)) {
     errors.phone = "Enter a valid phone number using 7-15 digits.";
+  }
+  if (nurse.dob && nurse.dob >= today()) {
+    errors.dob = "Date of birth must be before today.";
   }
   if (nurse.email && !emailPattern.test(nurse.email)) {
     errors.email = "Enter a valid email address.";
@@ -167,6 +173,17 @@ export default function NursesPage() {
                 onChange={handleChange}
               />
             </FormField>
+            <FormField label="Date of Birth" htmlFor="nurseDob" required error={errors.dob}>
+              <input
+                className={fieldClass("dob")}
+                id="nurseDob"
+                name="dob"
+                type="date"
+                max={addDays(today(), -1)}
+                value={form.dob}
+                onChange={handleChange}
+              />
+            </FormField>
             <FormField label="Specialization" htmlFor="nurseSpecialization" required error={errors.specialization}>
               <input
                 className={fieldClass("specialization")}
@@ -254,6 +271,7 @@ export default function NursesPage() {
               <tr>
                 <th>Nurse ID</th>
                 <th>Nurse</th>
+                <th>Date of Birth</th>
                 <th>Department</th>
                 <th>Specialization</th>
                 <th>Contact</th>
@@ -271,13 +289,14 @@ export default function NursesPage() {
                       subtitle={nurse.email}
                     />
                   </td>
+                  <td>{nurse.dob ? formatDate(nurse.dob) : "Not recorded"}</td>
                   <td>{nurse.department || "Not assigned"}</td>
                   <td>{nurse.specialization || "General Nursing"}</td>
                   <td>{nurse.phone || "-"}</td>
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan="5">
+                  <td colSpan="6">
                     <div className="empty-state">No nurses are registered yet.</div>
                   </td>
                 </tr>

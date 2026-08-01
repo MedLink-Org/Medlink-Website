@@ -1,4 +1,5 @@
 const userModel = require('../models/userModel');
+const patientModel = require('../models/patientModel');
 const {
   hashPassword,
   normalizeCredentials,
@@ -17,6 +18,63 @@ const sendAuthResponse = (res, statusCode, user) =>
     user,
   });
 
+const createAccount = async (email, password, role, profileId) => {
+  const passwordHash = await hashPassword(password);
+  const result = await userModel.createUser(
+    email,
+    passwordHash,
+    role,
+    profileId || null
+  );
+
+  if (result.rows.length === 0) {
+    const error = new Error('A user account with this email already exists');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  return result.rows[0];
+};
+
+const registerPatient = async (req, res) => {
+  try {
+    const { email, password } = normalizeCredentials(req.body);
+    const profileId = String(req.body.profile_id || '').trim();
+
+    if (!profileId) {
+      return res.status(400).json({
+        error: 'Patient ID is required to create an account',
+      });
+    }
+
+    const patient = await patientModel.getPatientById(profileId);
+    if (patient.rows.length === 0) {
+      return res.status(404).json({
+        error: 'No patient record matches this Patient ID',
+      });
+    }
+
+    const user = await createAccount(email, password, 'patient', profileId);
+    return sendAuthResponse(res, 201, user);
+  } catch (error) {
+    if (error.code === 'AUTH_CONFIG_ERROR') {
+      console.error(error.message);
+      return res.status(500).json({ error: 'Authentication is not configured' });
+    }
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    if (error.code === '23505' || error.code === '23514') {
+      return res.status(409).json({
+        error: 'The email or patient profile is already assigned',
+      });
+    }
+
+    console.error('Patient registration failed:', error);
+    return res.status(500).json({ error: 'Account creation failed' });
+  }
+};
+
 const register = async (req, res) => {
   try {
     const { email, password } = normalizeCredentials(req.body);
@@ -32,21 +90,8 @@ const register = async (req, res) => {
       });
     }
 
-    const passwordHash = await hashPassword(password);
-    const result = await userModel.createUser(
-      email,
-      passwordHash,
-      role,
-      profileId || null
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(409).json({
-        error: 'A user account with this email already exists',
-      });
-    }
-
-    return res.status(201).json({ user: result.rows[0] });
+    const user = await createAccount(email, password, role, profileId);
+    return res.status(201).json({ user });
   } catch (error) {
     if (error.code === 'AUTH_CONFIG_ERROR') {
       console.error(error.message);
@@ -120,5 +165,5 @@ module.exports = {
   getCurrentUser,
   login,
   register,
+  registerPatient,
 };
-

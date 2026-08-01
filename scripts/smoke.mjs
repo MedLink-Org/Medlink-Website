@@ -63,6 +63,7 @@ function createMockApi() {
       nurse_id: nurse.nurseId,
       first_name: nurse.firstName,
       last_name: nurse.lastName,
+      date_of_birth: nurse.dob,
       specialization: nurse.specialization,
       department: nurse.department,
       phone: nurse.phone,
@@ -121,6 +122,37 @@ function createMockApi() {
       }
 
       const url = new URL(request.url, apiUrl);
+
+      if (request.method === "POST" && url.pathname === "/api/auth/register") {
+        const body = await readJson(request);
+        const patient = state.patients.find(
+          item => String(item.patient_id) === String(body.profile_id)
+        );
+        if (!patient) {
+          sendJson(response, 404, { error: "No patient record matches this Patient ID." });
+          return;
+        }
+        if (state.currentUser) {
+          sendJson(response, 409, { error: "The email or patient profile is already assigned." });
+          return;
+        }
+        state.currentUser = {
+          user_id: "U003",
+          full_name: `${patient.first_name} ${patient.last_name}`,
+          email: body.email,
+          avatar_url: null,
+          role: "patient",
+          profile_id: patient.patient_id
+        };
+        state.password = body.password;
+        sendJson(response, 201, {
+          access_token: state.accessToken,
+          token_type: "Bearer",
+          expires_in: "7d",
+          user: state.currentUser
+        });
+        return;
+      }
 
       if (request.method === "POST" && url.pathname === "/api/auth/login") {
         const body = await readJson(request);
@@ -363,7 +395,7 @@ async function run() {
     await screenshot(page, "login-desktop");
     await page.locator("#authEmail").fill("amara.okafor@medlink.example");
     await page.locator("#authPassword").fill("SecurePass123!");
-    await page.getByRole("button", { name: "Sign In", exact: true }).click();
+    await page.locator(".auth-form").getByRole("button", { name: "Sign In", exact: true }).click();
     await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
     await page.getByText("Amara Okafor", { exact: true }).waitFor();
     await page.getByRole("heading", { name: /Good (morning|afternoon|evening), Amara/ }).waitFor();
@@ -411,6 +443,7 @@ async function run() {
     await navigate(page, "/nurses", "Nurse Registration");
     await page.locator("#nurseFirstName").fill("Lydia");
     await page.locator("#nurseLastName").fill("Nnamdi");
+    await page.locator("#nurseDob").fill("1990-08-19");
     await page.locator("#nurseSpecialization").fill("Pediatric Nursing");
     await page.locator("#nurseDepartment").selectOption("Pediatrics");
     await page.locator("#nursePhone").fill("+234 809 555 0138");
@@ -421,6 +454,10 @@ async function run() {
     assert(
       mockApi.state.nurses.at(-1)?.department === "Pediatrics",
       "Nurse department was not sent to the API."
+    );
+    assert(
+      mockApi.state.nurses.at(-1)?.date_of_birth === "1990-08-19",
+      "Nurse date of birth was not sent to the API."
     );
     await screenshot(page, "nurses-desktop");
 
@@ -500,6 +537,7 @@ async function run() {
     await page.getByRole("cell", { name: "N01", exact: true }).waitFor();
     await page.locator("#nurseFirstName").fill("Esther");
     await page.locator("#nurseLastName").fill("Obi");
+    await page.locator("#nurseDob").fill("1988-05-27");
     await page.locator("#nurseSpecialization").fill("Surgical Nursing");
     await page.locator("#nurseDepartment").selectOption("Surgical");
     await page.locator("#nursePhone").fill("+234 807 555 0106");
@@ -526,7 +564,7 @@ async function run() {
     };
     await page.locator("#authEmail").fill("chinedu.okafor@medlink.example");
     await page.locator("#authPassword").fill("SecurePass123!");
-    await page.getByRole("button", { name: "Sign In", exact: true }).click();
+    await page.locator(".auth-form").getByRole("button", { name: "Sign In", exact: true }).click();
     await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
     await navigate(page, "/doctors", "Doctor Directory");
     assert(
@@ -556,10 +594,29 @@ async function run() {
     await page.getByRole("button", { name: /Chinedu Okafor/ }).click();
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
+    mockApi.state.currentUser = null;
+    await page.getByLabel("Authentication method").getByRole("button", { name: "Create Account", exact: true }).click();
+    await page.getByRole("heading", { name: "Create your MedLink account", exact: true }).waitFor();
+    await page.locator("#authEmail").fill("grace.patient@example.com");
+    await page.locator("#authPatientId").fill("P001");
+    await page.locator("#authPassword").fill("PatientPass123!");
+    await page.locator("#authConfirmPassword").fill("PatientPass123!");
+    await page.locator(".auth-form").getByRole("button", { name: "Create Account", exact: true }).click();
+    await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
+    await page.getByRole("button", { name: /Adaeze Okeke/ }).click();
+    await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
+    await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
+    await page.locator("#authEmail").fill("grace.patient@example.com");
+    await page.locator("#authPassword").fill("PatientPass123!");
+    await page.locator(".auth-form").getByRole("button", { name: "Sign In", exact: true }).click();
+    await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
+    await page.getByRole("button", { name: /Adaeze Okeke/ }).click();
+    await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
+    await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
     await page.goto(`${baseUrl}/patients`);
     await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
 
-    console.log("Smoke test passed: assigned-account login, role permissions, bearer authentication, protected routes, workflows, staff-only offline records, logout, export, and mobile navigation.");
+    console.log("Smoke test passed: patient signup, login, role permissions, bearer authentication, protected routes, workflows, staff-only offline records, logout, export, and mobile navigation.");
     console.log(`Screenshots: ${artifactDir}`);
   } catch (error) {
     if (serverLog.trim()) {

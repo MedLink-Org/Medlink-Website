@@ -7,6 +7,7 @@ import {
 import { normalizeRole, roleLabel } from "../auth/accessControl";
 
 const AUTH_LOGIN_PATH = import.meta.env.VITE_AUTH_LOGIN_PATH || "/api/auth/login";
+const AUTH_REGISTER_PATH = import.meta.env.VITE_AUTH_REGISTER_PATH || "/api/auth/register";
 const AUTH_SESSION_PATH = import.meta.env.VITE_AUTH_SESSION_PATH || "/api/auth/me";
 
 function normalizeUser(payload) {
@@ -39,11 +40,11 @@ function normalizeUser(payload) {
   };
 }
 
-async function authenticate(path, email, password, options = {}) {
+async function authenticate(path, body, options = {}) {
   const payload = await request(path, {
     ...options,
     method: "POST",
-    body: { email, password }
+    body
   });
   const accessToken = payload?.access_token;
   const user = normalizeUser(payload?.user);
@@ -66,7 +67,15 @@ export function hasAccessToken() {
 }
 
 export function signIn(email, password, options = {}) {
-  return authenticate(AUTH_LOGIN_PATH, email, password, options);
+  return authenticate(AUTH_LOGIN_PATH, { email, password }, options);
+}
+
+export function signUp(email, password, profileId, options = {}) {
+  return authenticate(AUTH_REGISTER_PATH, {
+    email,
+    password,
+    profile_id: profileId
+  }, options);
 }
 
 export async function getCurrentUser(options = {}) {

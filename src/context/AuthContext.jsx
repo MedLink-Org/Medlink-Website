@@ -84,6 +84,12 @@ export function AuthProvider({ children }) {
     [runAuthentication]
   );
 
+  const signUp = useCallback(
+    (email, password, profileId) =>
+      runAuthentication(() => authService.signUp(email, password, profileId)),
+    [runAuthentication]
+  );
+
   const signOut = useCallback(async () => {
     authService.logout();
     setUser(null);
@@ -97,12 +103,14 @@ export function AuthProvider({ children }) {
     authenticated: Boolean(user),
     refreshSession,
     signIn,
+    signUp,
     signOut
   }), [
     error,
     loading,
     refreshSession,
     signIn,
+    signUp,
     signOut,
     user
   ]);

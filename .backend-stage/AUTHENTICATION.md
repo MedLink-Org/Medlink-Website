@@ -19,12 +19,31 @@ MedLink JWT used on every protected API request.
 4. Review existing accounts migrated to the `staff` role.
 5. Restart the backend.
 
-## Assign Account
+## Create Patient Account
+
+Patients can create an account using an existing, unclaimed Patient ID:
+
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "email": "patient@example.com",
+  "password": "secure-password",
+  "profile_id": "P001"
+}
+```
+
+The backend forces the `patient` role, verifies that the patient record exists,
+and returns a MedLink session. Public signup cannot create staff, doctor, or
+nurse accounts.
+
+## Assign Privileged Account
 
 Only an authenticated `staff` account can assign an account:
 
 ```http
-POST /api/auth/register
+POST /api/auth/accounts
 Content-Type: application/json
 Authorization: Bearer <staff-token>
 
