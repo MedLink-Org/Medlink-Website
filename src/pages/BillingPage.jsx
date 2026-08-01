@@ -41,6 +41,9 @@ export default function BillingPage() {
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
   const [filter, setFilter] = useState("All");
+  const [requestError, setRequestError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [updatingBillId, setUpdatingBillId] = useState("");
 
   const total = bills.reduce((sum, bill) => sum + Number(bill.amount), 0);
   const paid = bills.filter(bill => bill.status === "Paid").reduce((sum, bill) => sum + Number(bill.amount), 0);
@@ -56,6 +59,7 @@ export default function BillingPage() {
   function handleChange(event) {
     const { name, value } = event.target;
     setForm(current => ({ ...current, [name]: value }));
+    setRequestError(false);
     if (errors[name]) {
       setErrors(current => ({ ...current, [name]: "" }));
     }
@@ -82,26 +86,50 @@ export default function BillingPage() {
     setForm(emptyBill);
     setErrors({});
     setStatus("");
+    setRequestError(false);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
+    setRequestError(false);
     if (Object.keys(validationErrors).length) {
       setStatus("Please complete the required billing fields.");
       return;
     }
 
-    const record = addBill(form);
-    setForm(emptyBill);
-    setStatus(`${record.billId} was issued successfully.`);
-    showToast("Bill issued", `${record.billId} was created for ${formatCurrency(record.amount)}.`);
+    setIsSubmitting(true);
+    setStatus("Issuing bill...");
+    try {
+      const record = await addBill(form);
+      setForm(emptyBill);
+      setStatus(`${record.billId} was issued successfully.`);
+      showToast("Bill issued", `${record.billId} was created for ${formatCurrency(record.amount)}.`);
+    } catch (error) {
+      const message = error.message || "Unable to issue the bill.";
+      setRequestError(true);
+      setStatus(message);
+      showToast("Bill creation failed", message, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  function handleMarkPaid(billId) {
-    markBillPaid(billId);
-    showToast("Payment recorded", `${billId} has been marked as paid.`);
+  async function handleMarkPaid(billId) {
+    setUpdatingBillId(billId);
+    try {
+      await markBillPaid(billId);
+      showToast("Payment recorded", `${billId} has been marked as paid.`);
+    } catch (error) {
+      showToast(
+        "Payment update failed",
+        error.message || "Unable to mark the bill as paid.",
+        "error"
+      );
+    } finally {
+      setUpdatingBillId("");
+    }
   }
 
   function focusForm() {
@@ -171,12 +199,12 @@ export default function BillingPage() {
             </FormField>
           </div>
           <div className="form-footer">
-            <div className={`form-status ${Object.keys(errors).length ? "error" : ""}`} aria-live="polite">{status}</div>
+            <div className={`form-status ${Object.keys(errors).length || requestError ? "error" : ""}`} aria-live="polite">{status}</div>
             <div className="form-actions">
-              <button className="button button-secondary" type="button" onClick={resetForm}>Clear</button>
-              <button className="button button-primary" type="submit">
+              <button className="button button-secondary" type="button" onClick={resetForm} disabled={isSubmitting}>Clear</button>
+              <button className="button button-primary" type="submit" disabled={isSubmitting}>
                 <Plus />
-                Issue Bill
+                {isSubmitting ? "Issuing..." : "Issue Bill"}
               </button>
             </div>
           </div>
@@ -232,7 +260,7 @@ export default function BillingPage() {
                     <td><StatusBadge status={bill.status} /></td>
                     <td>
                       {bill.status === "Pending" ? (
-                        <button className="table-action" type="button" onClick={() => handleMarkPaid(bill.billId)}>
+                        <button className="table-action" type="button" disabled={updatingBillId === bill.billId} onClick={() => handleMarkPaid(bill.billId)}>
                           <BadgeCheck />Mark paid
                         </button>
                       ) : `Paid ${formatDate(bill.datePaid, { day: "numeric", month: "short" })}`}

@@ -66,6 +66,8 @@ export default function PatientsPage() {
   const [form, setForm] = useState(emptyPatient);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
+  const [requestError, setRequestError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const query = searchParams.get("q") || "";
 
   const filteredPatients = useMemo(() => {
@@ -85,6 +87,7 @@ export default function PatientsPage() {
   function handleChange(event) {
     const { name, value } = event.target;
     setForm(current => ({ ...current, [name]: value }));
+    setRequestError(false);
     if (errors[name]) {
       setErrors(current => ({ ...current, [name]: "" }));
     }
@@ -94,21 +97,34 @@ export default function PatientsPage() {
     setForm(emptyPatient);
     setErrors({});
     setStatus("");
+    setRequestError(false);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const validationErrors = validatePatient(form);
     setErrors(validationErrors);
+    setRequestError(false);
     if (Object.keys(validationErrors).length) {
       setStatus("Please correct the highlighted fields.");
       return;
     }
 
-    const record = addPatient(form);
-    setForm(emptyPatient);
-    setStatus(`${record.patientId} was registered successfully.`);
-    showToast("Patient registered", `${record.firstName} ${record.lastName} was added as ${record.patientId}.`);
+    setIsSubmitting(true);
+    setStatus("Registering patient...");
+    try {
+      const record = await addPatient(form);
+      setForm(emptyPatient);
+      setStatus(`${record.patientId} was registered successfully.`);
+      showToast("Patient registered", `${record.firstName} ${record.lastName} was added as ${record.patientId}.`);
+    } catch (error) {
+      const message = error.message || "Unable to register the patient.";
+      setRequestError(true);
+      setStatus(message);
+      showToast("Patient registration failed", message, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function fieldClass(name) {
@@ -186,15 +202,15 @@ export default function PatientsPage() {
           </div>
 
           <div className="form-footer">
-            <div className={`form-status ${Object.keys(errors).length ? "error" : ""}`} aria-live="polite">{status}</div>
+            <div className={`form-status ${Object.keys(errors).length || requestError ? "error" : ""}`} aria-live="polite">{status}</div>
             <div className="form-actions">
-              <button className="button button-secondary" type="button" onClick={resetForm}>
+              <button className="button button-secondary" type="button" onClick={resetForm} disabled={isSubmitting}>
                 <X />
                 Cancel
               </button>
-              <button className="button button-primary" type="submit">
+              <button className="button button-primary" type="submit" disabled={isSubmitting}>
                 <UserPlus />
-                Register Patient
+                {isSubmitting ? "Registering..." : "Register Patient"}
               </button>
             </div>
           </div>

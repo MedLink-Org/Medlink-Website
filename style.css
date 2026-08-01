@@ -61,6 +61,12 @@ select {
   cursor: pointer;
 }
 
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 svg {
   width: 18px;
   height: 18px;
@@ -427,6 +433,52 @@ h3 {
 .view {
   max-width: 1540px;
   margin: 0 auto;
+}
+
+.data-state {
+  display: flex;
+  min-height: calc(100vh - 160px);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.data-state > svg {
+  width: 28px;
+  height: 28px;
+  color: var(--primary);
+}
+
+.data-state strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.data-state p {
+  max-width: 480px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.data-state .button {
+  margin-top: 8px;
+}
+
+.data-state-error > svg {
+  color: var(--danger);
+}
+
+.data-state-spinner {
+  animation: data-state-spin 850ms linear infinite;
+}
+
+@keyframes data-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .page-heading {

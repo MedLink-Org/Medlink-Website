@@ -44,6 +44,9 @@ export default function AppointmentsPage() {
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
   const [filter, setFilter] = useState("All");
+  const [requestError, setRequestError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [updatingAppointmentId, setUpdatingAppointmentId] = useState("");
 
   const filteredAppointments = useMemo(
     () => appointments
@@ -55,6 +58,7 @@ export default function AppointmentsPage() {
   function handleChange(event) {
     const { name, value } = event.target;
     setForm(current => ({ ...current, [name]: value }));
+    setRequestError(false);
     if (errors[name]) {
       setErrors(current => ({ ...current, [name]: "" }));
     }
@@ -96,26 +100,50 @@ export default function AppointmentsPage() {
     setForm(createEmptyAppointment());
     setErrors({});
     setStatus("");
+    setRequestError(false);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
+    setRequestError(false);
     if (Object.keys(validationErrors).length) {
       setStatus("Please correct the highlighted fields.");
       return;
     }
 
-    const record = addAppointment(form);
-    setForm(createEmptyAppointment());
-    setStatus(`${record.appointmentId} was booked successfully.`);
-    showToast("Appointment booked", `${record.appointmentId} has been added to the clinic schedule.`);
+    setIsSubmitting(true);
+    setStatus("Booking appointment...");
+    try {
+      const record = await addAppointment(form);
+      setForm(createEmptyAppointment());
+      setStatus(`${record.appointmentId} was booked successfully.`);
+      showToast("Appointment booked", `${record.appointmentId} has been added to the clinic schedule.`);
+    } catch (error) {
+      const message = error.message || "Unable to book the appointment.";
+      setRequestError(true);
+      setStatus(message);
+      showToast("Appointment booking failed", message, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  function updateStatus(appointmentId, nextStatus) {
-    setAppointmentStatus(appointmentId, nextStatus);
-    showToast("Appointment updated", `The appointment is now ${nextStatus.toLowerCase()}.`);
+  async function updateStatus(appointmentId, nextStatus) {
+    setUpdatingAppointmentId(appointmentId);
+    try {
+      await setAppointmentStatus(appointmentId, nextStatus);
+      showToast("Appointment updated", `The appointment is now ${nextStatus.toLowerCase()}.`);
+    } catch (error) {
+      showToast(
+        "Appointment update failed",
+        error.message || "Unable to update the appointment.",
+        "error"
+      );
+    } finally {
+      setUpdatingAppointmentId("");
+    }
   }
 
   function fieldClass(name) {
@@ -188,15 +216,15 @@ export default function AppointmentsPage() {
           </div>
 
           <div className="form-footer">
-            <div className={`form-status ${Object.keys(errors).length ? "error" : ""}`} aria-live="polite">{status}</div>
+            <div className={`form-status ${Object.keys(errors).length || requestError ? "error" : ""}`} aria-live="polite">{status}</div>
             <div className="form-actions">
-              <button className="button button-secondary" type="button" onClick={resetForm}>
+              <button className="button button-secondary" type="button" onClick={resetForm} disabled={isSubmitting}>
                 <X />
                 Cancel
               </button>
-              <button className="button button-primary" type="submit">
+              <button className="button button-primary" type="submit" disabled={isSubmitting}>
                 <CalendarCheck />
-                Confirm Appointment
+                {isSubmitting ? "Booking..." : "Confirm Appointment"}
               </button>
             </div>
           </div>
@@ -256,16 +284,16 @@ export default function AppointmentsPage() {
                     <td>
                       <div className="table-actions">
                         {appointment.status === "Scheduled" && (
-                          <button className="table-action" type="button" onClick={() => updateStatus(appointment.appointmentId, "Checked In")}>
+                          <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Checked In")}>
                             <LogIn />Check in
                           </button>
                         )}
                         {["Scheduled", "Checked In"].includes(appointment.status) && (
                           <>
-                            <button className="table-action" type="button" onClick={() => updateStatus(appointment.appointmentId, "Completed")}>
+                            <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Completed")}>
                               <Check />Complete
                             </button>
-                            <button className="table-action danger" type="button" onClick={() => updateStatus(appointment.appointmentId, "Cancelled")}>
+                            <button className="table-action danger" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Cancelled")}>
                               <X />Cancel
                             </button>
                           </>

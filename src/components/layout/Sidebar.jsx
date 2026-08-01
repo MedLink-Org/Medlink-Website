@@ -65,7 +65,7 @@ export default function Sidebar({ open, onNavigate }) {
           <span className="status-dot" aria-hidden="true" />
           <div>
             <strong>System online</strong>
-            <small>Records synced locally</small>
+            <small>Records synced with server</small>
           </div>
         </div>
         <p>INS 204 Group 13</p>
