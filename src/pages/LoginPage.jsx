@@ -13,19 +13,25 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const signupRoles = [
+  { value: "patient", label: "Patient", needsProfile: true },
+  { value: "doctor", label: "Doctor", needsProfile: true },
+  { value: "nurse", label: "Nurse", needsProfile: true },
+  { value: "staff", label: "Staff", needsProfile: false }
+];
 
 function locationPath(location) {
   const from = location.state?.from;
   return from ? `${from.pathname}${from.search}${from.hash}` : "/";
 }
 
-function validate(mode, email, password, patientId, confirmPassword) {
+function validate(mode, email, password, role, profileId, confirmPassword) {
   const errors = {};
   if (!emailPattern.test(email.trim())) {
     errors.email = "Enter a valid email address.";
   }
-  if (mode === "signup" && !patientId.trim()) {
-    errors.patientId = "Enter the Patient ID from your clinic record.";
+  if (mode === "signup" && role !== "staff" && !profileId.trim()) {
+    errors.profileId = `Enter the ${role} profile ID from your clinic record.`;
   }
   if (password.length < 8) {
     errors.password = "Password must be at least 8 characters.";
@@ -42,7 +48,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
-  const [patientId, setPatientId] = useState("");
+  const [role, setRole] = useState("patient");
+  const [profileId, setProfileId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({});
@@ -60,7 +67,8 @@ export default function LoginPage() {
       mode,
       email,
       password,
-      patientId,
+      role,
+      profileId,
       confirmPassword
     );
     setErrors(validationErrors);
@@ -71,7 +79,7 @@ export default function LoginPage() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
       if (mode === "signup") {
-        await signUp(normalizedEmail, password, patientId.trim());
+        await signUp(normalizedEmail, password, role, profileId.trim());
       } else {
         await signIn(normalizedEmail, password);
       }
@@ -102,7 +110,7 @@ export default function LoginPage() {
           </h1>
           <p>
             {mode === "signup"
-              ? "Link a new patient account to your existing clinic record."
+              ? "Choose your clinic role and link your account to an existing profile."
               : "Use your assigned staff, doctor, nurse, or patient account."}
           </p>
         </div>
@@ -160,25 +168,44 @@ export default function LoginPage() {
 
           {mode === "signup" && (
             <>
-              <label htmlFor="authPatientId">Patient ID</label>
-              <div className={`auth-input ${errors.patientId ? "invalid" : ""}`}>
+              <label htmlFor="authRole">Account Type</label>
+              <select
+                id="authRole"
+                className={errors.role ? "invalid" : ""}
+                value={role}
+                onChange={event => {
+                  setRole(event.target.value);
+                  setProfileId("");
+                  setRequestError("");
+                }}
+              >
+                {signupRoles.map(option => <option value={option.value} key={option.value}>{option.label}</option>)}
+              </select>
+              <span className="field-error">{errors.role}</span>
+
+              {role !== "staff" && (
+                <>
+              <label htmlFor="authProfileId">{signupRoles.find(option => option.value === role)?.label} Profile ID</label>
+              <div className={`auth-input ${errors.profileId ? "invalid" : ""}`}>
                 <IdCard />
                 <input
-                  id="authPatientId"
+                  id="authProfileId"
                   type="text"
                   autoComplete="off"
-                  placeholder="e.g. P001"
-                  value={patientId}
+                  placeholder={role === "doctor" ? "e.g. D001" : role === "nurse" ? "e.g. N001" : "e.g. P001"}
+                  value={profileId}
                   onChange={event => {
-                    setPatientId(event.target.value);
+                    setProfileId(event.target.value);
                     setRequestError("");
-                    if (errors.patientId) {
-                      setErrors(current => ({ ...current, patientId: "" }));
+                    if (errors.profileId) {
+                      setErrors(current => ({ ...current, profileId: "" }));
                     }
                   }}
                 />
               </div>
-              <span className="field-error">{errors.patientId}</span>
+              <span className="field-error">{errors.profileId}</span>
+                </>
+              )}
             </>
           )}
 
@@ -234,7 +261,7 @@ export default function LoginPage() {
 
         <p className="auth-footnote">
           {mode === "signup"
-            ? "Patient signup requires an existing unclaimed Patient ID."
+            ? "Doctor, nurse, and patient signup requires an existing unclaimed clinic profile ID."
             : "Staff and clinician roles are assigned by clinic administration."}
         </p>
       </section>

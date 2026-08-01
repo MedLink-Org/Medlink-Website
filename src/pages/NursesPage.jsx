@@ -20,14 +20,12 @@ const emptyNurse = {
   firstName: "",
   lastName: "",
   dob: "",
-  specialization: "",
-  department: "",
   phone: "",
-  email: ""
+  address: "",
+  dateOfEmployment: ""
 };
 
 const phonePattern = /^\+?[\d\s()-]{7,20}$/;
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateNurse(nurse) {
   const errors = {};
@@ -35,10 +33,9 @@ function validateNurse(nurse) {
     firstName: "First name",
     lastName: "Last name",
     dob: "Date of birth",
-    specialization: "Specialization",
-    department: "Department",
-    phone: "Phone number",
-    email: "Email address"
+    phone: "Contact information",
+    address: "Address",
+    dateOfEmployment: "Date of employment"
   };
 
   Object.entries(requiredFields).forEach(([name, label]) => {
@@ -52,8 +49,11 @@ function validateNurse(nurse) {
   if (nurse.dob && nurse.dob >= today()) {
     errors.dob = "Date of birth must be before today.";
   }
-  if (nurse.email && !emailPattern.test(nurse.email)) {
-    errors.email = "Enter a valid email address.";
+  if (nurse.dateOfEmployment && nurse.dateOfEmployment > today()) {
+    errors.dateOfEmployment = "Employment date cannot be in the future.";
+  }
+  if (nurse.dob && nurse.dateOfEmployment && nurse.dateOfEmployment <= nurse.dob) {
+    errors.dateOfEmployment = "Employment date must be after the date of birth.";
   }
 
   return errors;
@@ -128,8 +128,8 @@ export default function NursesPage() {
         title={canManageNurses ? "Nurse Registration" : "Nurse Directory"}
         titleId="nursesHeading"
         description={canManageNurses
-          ? "Register nursing professionals and organize them by department."
-          : "Review nursing professionals by department and specialization."}
+          ? "Register nursing professionals and record their contact details."
+          : "Review nursing professionals and their contact details."}
         actions={canManageNurses ? (
           <div className="page-badge">
             <HeartPulse />
@@ -143,7 +143,7 @@ export default function NursesPage() {
           <span className="section-icon section-icon-green"><CircleUserRound /></span>
           <div>
             <h3>Professional profile</h3>
-            <p>Complete the nurse's identity, department, and contact details.</p>
+            <p>Complete the nurse's identity, address, and employment details.</p>
           </div>
         </div>
 
@@ -184,38 +184,7 @@ export default function NursesPage() {
                 onChange={handleChange}
               />
             </FormField>
-            <FormField label="Specialization" htmlFor="nurseSpecialization" required error={errors.specialization}>
-              <input
-                className={fieldClass("specialization")}
-                id="nurseSpecialization"
-                name="specialization"
-                type="text"
-                placeholder="e.g. Emergency Nursing"
-                value={form.specialization}
-                onChange={handleChange}
-              />
-            </FormField>
-            <FormField label="Department" htmlFor="nurseDepartment" required error={errors.department}>
-              <select
-                className={fieldClass("department")}
-                id="nurseDepartment"
-                name="department"
-                value={form.department}
-                onChange={handleChange}
-              >
-                <option value="">Select department</option>
-                {[
-                  "Outpatient",
-                  "Emergency",
-                  "Pediatrics",
-                  "Surgical",
-                  "Maternity",
-                  "Medical Ward",
-                  "Intensive Care"
-                ].map(department => <option key={department}>{department}</option>)}
-              </select>
-            </FormField>
-            <FormField label="Phone Number" htmlFor="nursePhone" required hint="Use 7-15 digits; spaces, +, brackets, and hyphens are allowed." error={errors.phone}>
+            <FormField label="Contact Information" htmlFor="nursePhone" required hint="Use 7-15 digits; spaces, +, brackets, and hyphens are allowed." error={errors.phone}>
               <input
                 className={fieldClass("phone")}
                 id="nursePhone"
@@ -227,17 +196,20 @@ export default function NursesPage() {
                 onChange={handleChange}
               />
             </FormField>
-            <FormField label="Email Address" htmlFor="nurseEmail" required error={errors.email}>
+            <FormField className="span-2" label="Address" htmlFor="nurseAddress" required error={errors.address}>
               <input
-                className={fieldClass("email")}
-                id="nurseEmail"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="nurse@medlink.example"
-                value={form.email}
+                className={fieldClass("address")}
+                id="nurseAddress"
+                name="address"
+                type="text"
+                autoComplete="street-address"
+                placeholder="Residential or clinic address"
+                value={form.address}
                 onChange={handleChange}
               />
+            </FormField>
+            <FormField label="Date of Employment" htmlFor="nurseEmploymentDate" required error={errors.dateOfEmployment}>
+              <input className={fieldClass("dateOfEmployment")} id="nurseEmploymentDate" name="dateOfEmployment" type="date" max={today()} value={form.dateOfEmployment} onChange={handleChange} />
             </FormField>
           </div>
 
@@ -263,7 +235,7 @@ export default function NursesPage() {
         <PanelHeader
           icon={BriefcaseMedical}
           title="Registered Nurses"
-          description="Review nursing staff by department and specialization."
+          description="Review nursing staff by contact and employment details."
         />
         <div className="table-wrap">
           <table className="data-table">
@@ -272,9 +244,9 @@ export default function NursesPage() {
                 <th>Nurse ID</th>
                 <th>Nurse</th>
                 <th>Date of Birth</th>
-                <th>Department</th>
-                <th>Specialization</th>
                 <th>Contact</th>
+                <th>Address</th>
+                <th>Date of Employment</th>
               </tr>
             </thead>
             <tbody>
@@ -286,13 +258,13 @@ export default function NursesPage() {
                       compact
                       person={nurse}
                       title={`${nurse.firstName} ${nurse.lastName}`}
-                      subtitle={nurse.email}
+                      subtitle={nurse.address || "Clinical team member"}
                     />
                   </td>
                   <td>{nurse.dob ? formatDate(nurse.dob) : "Not recorded"}</td>
-                  <td>{nurse.department || "Not assigned"}</td>
-                  <td>{nurse.specialization || "General Nursing"}</td>
-                  <td>{nurse.phone || "-"}</td>
+                    <td>{nurse.phone || "-"}</td>
+                    <td>{nurse.address || "-"}</td>
+                    <td>{nurse.dateOfEmployment ? formatDate(nurse.dateOfEmployment) : "Not recorded"}</td>
                 </tr>
               )) : (
                 <tr>

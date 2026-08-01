@@ -23,7 +23,7 @@ const createAppointment = (data) =>
       data.appointment_date,
       data.appointment_time,
       data.purpose || data.reason || data.visit_type || '',
-      data.status || 'Scheduled',
+      data.status || 'scheduled',
     ]
   );
 

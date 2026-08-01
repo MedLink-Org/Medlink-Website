@@ -70,11 +70,12 @@ export function signIn(email, password, options = {}) {
   return authenticate(AUTH_LOGIN_PATH, { email, password }, options);
 }
 
-export function signUp(email, password, profileId, options = {}) {
+export function signUp(email, password, role, profileId, options = {}) {
   return authenticate(AUTH_REGISTER_PATH, {
     email,
     password,
-    profile_id: profileId
+    role,
+    profile_id: profileId || null
   }, options);
 }
 

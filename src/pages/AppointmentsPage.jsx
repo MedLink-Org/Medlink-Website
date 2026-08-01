@@ -4,7 +4,7 @@ import {
   CalendarClock,
   CalendarPlus2,
   Check,
-  LogIn,
+  UserX,
   X
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -19,11 +19,18 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { formatDate, formatLongDate, formatTime, today } from "../utils/date";
 import { doctorName } from "../utils/format";
+import {
+  APPOINTMENT_STATUS,
+  APPOINTMENT_STATUSES,
+  appointmentStatusLabel
+} from "../utils/appointmentStatus";
 
 function createEmptyAppointment() {
   return {
     patientId: "",
     doctorId: "",
+    nurseId: "",
+    status: APPOINTMENT_STATUS.SCHEDULED,
     date: today(),
     time: "",
     visitType: "",
@@ -38,9 +45,11 @@ export default function AppointmentsPage() {
   const {
     patients,
     doctors,
+    nurses,
     appointments,
     patientById,
     doctorById,
+    nurseById,
     addAppointment,
     setAppointmentStatus
   } = useMedLink();
@@ -48,7 +57,7 @@ export default function AppointmentsPage() {
   const [form, setForm] = useState(createEmptyAppointment);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("all");
   const [requestError, setRequestError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingAppointmentId, setUpdatingAppointmentId] = useState("");
@@ -56,7 +65,7 @@ export default function AppointmentsPage() {
 
   const filteredAppointments = useMemo(
     () => appointments
-      .filter(appointment => filter === "All" || appointment.status === filter)
+      .filter(appointment => filter === "all" || appointment.status === filter)
       .sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`)),
     [appointments, filter]
   );
@@ -94,7 +103,7 @@ export default function AppointmentsPage() {
       appointment.doctorId === form.doctorId &&
       appointment.date === form.date &&
       appointment.time === form.time &&
-      appointment.status !== "Cancelled"
+      appointment.status !== APPOINTMENT_STATUS.CANCELLED
     );
     if (conflict) {
       validationErrors.time = "This doctor already has an appointment at that time.";
@@ -143,7 +152,7 @@ export default function AppointmentsPage() {
     setUpdatingAppointmentId(appointmentId);
     try {
       await setAppointmentStatus(appointmentId, nextStatus);
-      showToast("Appointment updated", `The appointment is now ${nextStatus.toLowerCase()}.`);
+      showToast("Appointment updated", `The appointment is now ${appointmentStatusLabel(nextStatus).toLowerCase()}.`);
     } catch (error) {
       showToast(
         "Appointment update failed",
@@ -205,6 +214,23 @@ export default function AppointmentsPage() {
                 ))}
               </select>
             </FormField>
+            <FormField label="Nurse" htmlFor="appointmentNurse" hint="Optional. Leave unassigned if nursing support is not required.">
+              <select id="appointmentNurse" name="nurseId" value={form.nurseId} onChange={handleChange}>
+                <option value="">Unassigned</option>
+                {[...nurses].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(nurse => (
+                  <option value={nurse.nurseId} key={nurse.nurseId}>
+                    {nurse.firstName} {nurse.lastName}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Appointment Status" htmlFor="appointmentStatus" required hint="Select the current appointment state." error={errors.appointmentStatus}>
+              <select className={fieldClass("appointmentStatus")} id="appointmentStatus" name="status" value={form.status} onChange={handleChange}>
+                {APPOINTMENT_STATUSES.map(option => (
+                  <option key={option} value={option}>{appointmentStatusLabel(option)}</option>
+                ))}
+              </select>
+            </FormField>
             <FormField label="Appointment Date" htmlFor="appointmentDate" required hint="Appointments cannot be booked in the past." error={errors.date}>
               <input className={fieldClass("date")} id="appointmentDate" name="date" type="date" min={today()} value={form.date} onChange={handleChange} />
             </FormField>
@@ -249,9 +275,9 @@ export default function AppointmentsPage() {
             <label className="filter-select">
               <span>Status</span>
               <select value={filter} onChange={event => setFilter(event.target.value)}>
-                <option value="All">All appointments</option>
-                {["Scheduled", "Checked In", "Completed", "Cancelled"].map(option => (
-                  <option key={option}>{option}</option>
+                <option value="all">All appointments</option>
+                {APPOINTMENT_STATUSES.map(option => (
+                  <option key={option} value={option}>{appointmentStatusLabel(option)}</option>
                 ))}
               </select>
             </label>
@@ -264,6 +290,7 @@ export default function AppointmentsPage() {
                 <th>Time</th>
                 <th>Patient</th>
                 <th>Doctor</th>
+                <th>Nurse</th>
                 <th>Visit Type</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -273,6 +300,7 @@ export default function AppointmentsPage() {
               {filteredAppointments.length ? filteredAppointments.map(appointment => {
                 const patient = patientById(appointment.patientId);
                 const doctor = doctorById(appointment.doctorId);
+                const nurse = nurseById(appointment.nurseId);
                 return (
                   <tr key={appointment.appointmentId}>
                     <td>
@@ -288,32 +316,33 @@ export default function AppointmentsPage() {
                       />
                     </td>
                     <td>{doctorName(doctor)}<br /><small>{doctor?.specialization}</small></td>
+                    <td>
+                      {nurse ? `${nurse.firstName} ${nurse.lastName}` : "Unassigned"}
+                    </td>
                     <td>{appointment.visitType}</td>
                     <td><StatusBadge status={appointment.status} /></td>
                     <td>
                       <div className="table-actions">
-                        {canUpdateAppointments && appointment.status === "Scheduled" && (
-                          <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Checked In")}>
-                            <LogIn />Check in
-                          </button>
-                        )}
-                        {canUpdateAppointments && ["Scheduled", "Checked In"].includes(appointment.status) && (
+                        {canUpdateAppointments && appointment.status === APPOINTMENT_STATUS.SCHEDULED && (
                           <>
-                            <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Completed")}>
+                            <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, APPOINTMENT_STATUS.COMPLETED)}>
                               <Check />Complete
                             </button>
-                            <button className="table-action danger" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, "Cancelled")}>
+                            <button className="table-action" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, APPOINTMENT_STATUS.NO_SHOW)}>
+                              <UserX />No-show
+                            </button>
+                            <button className="table-action danger" type="button" disabled={updatingAppointmentId === appointment.appointmentId} onClick={() => updateStatus(appointment.appointmentId, APPOINTMENT_STATUS.CANCELLED)}>
                               <X />Cancel
                             </button>
                           </>
                         )}
-                        {(!canUpdateAppointments || !["Scheduled", "Checked In"].includes(appointment.status)) && "-"}
+                        {(!canUpdateAppointments || appointment.status !== APPOINTMENT_STATUS.SCHEDULED) && "-"}
                       </div>
                     </td>
                   </tr>
                 );
               }) : (
-                <tr><td colSpan="6"><div className="empty-state">No appointments match this status.</div></td></tr>
+                <tr><td colSpan="7"><div className="empty-state">No appointments match this status.</div></td></tr>
               )}
             </tbody>
           </table>

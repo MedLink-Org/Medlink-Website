@@ -63,11 +63,11 @@ function createMockApi() {
       nurse_id: nurse.nurseId,
       first_name: nurse.firstName,
       last_name: nurse.lastName,
-      date_of_birth: nurse.dob,
+      date_of_birth: `${nurse.dob}T00:00:00.000Z`,
       specialization: nurse.specialization,
       department: nurse.department,
       phone: nurse.phone,
-      email: nurse.email
+      date_of_employment: `${nurse.dateOfEmployment}T00:00:00.000Z`
     })),
     staff: [],
     appointments: seed.appointments.map(appointment => ({
@@ -410,10 +410,7 @@ async function run() {
     await page.locator("#dob").fill("1994-03-18");
     await page.locator("#gender").selectOption("Female");
     await page.locator("#phone").fill("+234 801 555 0199");
-    await page.locator("#email").fill("zara.mensah@example.com");
     await page.locator("#address").fill("17 Douglas Road, Owerri, Imo State");
-    await page.locator("#bloodType").selectOption("A+");
-    await page.locator("#genotype").selectOption("AA");
     await page.getByRole("button", { name: "Register Patient" }).click();
     await page.getByText("Patient registered", { exact: true }).waitFor();
     await page.getByRole("cell", { name: "P007", exact: true }).waitFor();
@@ -444,35 +441,37 @@ async function run() {
     await page.locator("#nurseFirstName").fill("Lydia");
     await page.locator("#nurseLastName").fill("Nnamdi");
     await page.locator("#nurseDob").fill("1990-08-19");
-    await page.locator("#nurseSpecialization").fill("Pediatric Nursing");
-    await page.locator("#nurseDepartment").selectOption("Pediatrics");
     await page.locator("#nursePhone").fill("+234 809 555 0138");
-    await page.locator("#nurseEmail").fill("lydia.nnamdi@medlink.example");
+    await page.locator("#nurseAddress").fill("4 Imo State University Road, Owerri");
+    await page.locator("#nurseEmploymentDate").fill("2015-08-19");
     await page.getByRole("button", { name: "Register Nurse" }).click();
     await page.getByText("Nurse registered", { exact: true }).waitFor();
     await page.getByRole("cell", { name: "N03", exact: true }).waitFor();
     assert(
-      mockApi.state.nurses.at(-1)?.department === "Pediatrics",
-      "Nurse department was not sent to the API."
+      mockApi.state.nurses.at(-1)?.address === "4 Imo State University Road, Owerri",
+      "Nurse address was not sent to the API."
     );
     assert(
-      mockApi.state.nurses.at(-1)?.date_of_birth === "1990-08-19",
-      "Nurse date of birth was not sent to the API."
+      mockApi.state.nurses.at(-1)?.date_of_employment === "2015-08-19",
+      "Nurse employment date was not sent to the API."
     );
     await screenshot(page, "nurses-desktop");
 
     await navigate(page, "/appointments", "Appointment Management");
     await page.locator("#appointmentPatient").selectOption("P007");
     await page.locator("#appointmentDoctor").selectOption("D05");
+    await page.locator("#appointmentNurse").selectOption("N03");
     await page.locator("#appointmentTime").fill("17:45");
     await page.locator("#appointmentType").selectOption("Follow-up");
     await page.locator("#appointmentReason").fill("Post-treatment review");
     await page.getByRole("button", { name: "Confirm Appointment" }).click();
     await page.getByText("Appointment booked", { exact: true }).waitFor();
+    assert(
+      mockApi.state.appointments.at(-1)?.nurse_id === "N03",
+      "Optional nurse assignment was not sent to the API."
+    );
     let appointmentRow = page.locator("tbody tr").filter({ hasText: "Zara Mensah" });
     await appointmentRow.waitFor();
-    await appointmentRow.getByRole("button", { name: "Check in" }).click();
-    appointmentRow = page.locator("tbody tr").filter({ hasText: "Zara Mensah" });
     await appointmentRow.getByRole("button", { name: "Complete" }).click();
     await appointmentRow.getByText("Completed", { exact: true }).waitFor();
     await screenshot(page, "appointments-desktop");
@@ -538,10 +537,9 @@ async function run() {
     await page.locator("#nurseFirstName").fill("Esther");
     await page.locator("#nurseLastName").fill("Obi");
     await page.locator("#nurseDob").fill("1988-05-27");
-    await page.locator("#nurseSpecialization").fill("Surgical Nursing");
-    await page.locator("#nurseDepartment").selectOption("Surgical");
     await page.locator("#nursePhone").fill("+234 807 555 0106");
-    await page.locator("#nurseEmail").fill("esther.obi@medlink.example");
+    await page.locator("#nurseAddress").fill("19 Tetlow Road, Owerri, Imo State");
+    await page.locator("#nurseEmploymentDate").fill("2014-05-27");
     await page.getByRole("button", { name: "Register Nurse" }).click();
     await page.getByRole("cell", { name: "N03", exact: true }).waitFor();
     await page.waitForTimeout(150);
@@ -598,7 +596,7 @@ async function run() {
     await page.getByLabel("Authentication method").getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByRole("heading", { name: "Create your MedLink account", exact: true }).waitFor();
     await page.locator("#authEmail").fill("grace.patient@example.com");
-    await page.locator("#authPatientId").fill("P001");
+    await page.locator("#authProfileId").fill("P001");
     await page.locator("#authPassword").fill("PatientPass123!");
     await page.locator("#authConfirmPassword").fill("PatientPass123!");
     await page.locator(".auth-form").getByRole("button", { name: "Create Account", exact: true }).click();

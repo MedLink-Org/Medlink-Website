@@ -20,20 +20,25 @@ const validateAppointment = (req, res, next) => {
   }
 
   const validStatuses = [
-    'Scheduled',
-    'Checked In',
-    'Completed',
-    'Cancelled',
-    'No-show',
+    'scheduled',
+    'completed',
+    'cancelled',
+    'no-show',
   ];
-  if (status && !validStatuses.includes(status)) {
+  const normalizedStatus = String(status || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^checked in$/, 'scheduled')
+    .replace(/^canceled$/, 'cancelled');
+
+  if (status && !validStatuses.includes(normalizedStatus)) {
     return res.status(400).json({
       error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
     });
   }
+  if (status) req.body.status = normalizedStatus;
 
   next();
 };
 
 module.exports = validateAppointment;
-

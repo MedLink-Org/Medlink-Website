@@ -5,7 +5,7 @@ const authorize = require('../middleware/authorize');
 
 const router = express.Router();
 
-router.post('/register', authController.registerPatient);
+router.post('/register', authController.register);
 router.post('/accounts', authenticate, authorize('staff'), authController.register);
 router.post('/login', authController.login);
 router.get('/me', authenticate, authController.getCurrentUser);

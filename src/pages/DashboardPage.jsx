@@ -1,6 +1,5 @@
 import {
   Activity,
-  BadgeCheck,
   CalendarCheck2,
   CalendarPlus,
   CalendarRange,
@@ -10,7 +9,6 @@ import {
   HeartPulse,
   LogIn,
   ReceiptText,
-  Siren,
   TriangleAlert,
   UserPlus,
   Users
@@ -26,6 +24,7 @@ import StatCard from "../components/common/StatCard";
 import StatusBadge from "../components/common/StatusBadge";
 import { useMedLink } from "../context/MedLinkContext";
 import { useAuth } from "../context/AuthContext";
+import { APPOINTMENT_STATUS } from "../utils/appointmentStatus";
 import { dateRange, formatDate, formatLongDate, formatTime, today } from "../utils/date";
 import { doctorName, formatCurrency } from "../utils/format";
 
@@ -46,10 +45,17 @@ export default function DashboardPage() {
   const canCreateAppointments = hasPermission(user?.role, PERMISSIONS.APPOINTMENTS_CREATE);
 
   const todaysAppointments = appointments
-    .filter(appointment => appointment.date === currentDate && appointment.status !== "Cancelled")
+    .filter(appointment =>
+      appointment.date === currentDate
+      && appointment.status !== APPOINTMENT_STATUS.CANCELLED
+    )
     .sort((a, b) => a.time.localeCompare(b.time));
-  const completedToday = todaysAppointments.filter(item => item.status === "Completed").length;
-  const pendingToday = todaysAppointments.filter(item => ["Scheduled", "Checked In"].includes(item.status)).length;
+  const completedToday = todaysAppointments.filter(
+    item => item.status === APPOINTMENT_STATUS.COMPLETED
+  ).length;
+  const pendingToday = todaysAppointments.filter(
+    item => item.status === APPOINTMENT_STATUS.SCHEDULED
+  ).length;
   const pendingBills = bills.filter(bill => bill.status === "Pending");
   const outstanding = pendingBills.reduce((sum, bill) => sum + Number(bill.amount), 0);
   const uniquePatients = new Set(todaysAppointments.map(item => item.patientId)).size;
@@ -57,21 +63,12 @@ export default function DashboardPage() {
   const arrivals = appointments
     .filter(appointment =>
       appointment.date >= currentDate &&
-      ["Scheduled", "Checked In"].includes(appointment.status)
+      appointment.status === APPOINTMENT_STATUS.SCHEDULED
     )
     .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
     .slice(0, 5);
 
-  const checkedIn = appointments.filter(item =>
-    item.date === currentDate && item.status === "Checked In"
-  );
   const alerts = [
-    ...(checkedIn.length ? [{
-      icon: Siren,
-      title: "Patient awaiting consultation",
-      message: `${checkedIn.length} checked-in patient${checkedIn.length === 1 ? " is" : "s are"} ready for the assigned doctor.`,
-      time: "Now"
-    }] : []),
     ...(pendingBills.length ? [{
       icon: ReceiptText,
       title: "Outstanding patient balances",
@@ -88,7 +85,9 @@ export default function DashboardPage() {
 
   const activityData = dateRange(currentDate, 7).map(date => ({
     label: formatDate(date, { weekday: "short" }),
-    value: appointments.filter(item => item.date === date && item.status !== "Cancelled").length
+    value: appointments.filter(
+      item => item.date === date && item.status !== APPOINTMENT_STATUS.CANCELLED
+    ).length
   }));
 
   return (
@@ -165,7 +164,7 @@ export default function DashboardPage() {
             {arrivals.length ? arrivals.map(appointment => {
               const patient = patientById(appointment.patientId);
               const doctor = doctorById(appointment.doctorId);
-              const ArrivalIcon = appointment.status === "Checked In" ? BadgeCheck : LogIn;
+              const ArrivalIcon = LogIn;
               const dayLabel = appointment.date === currentDate
                 ? "Today"
                 : formatDate(appointment.date, { weekday: "short", day: "numeric" });

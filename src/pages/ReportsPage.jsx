@@ -18,6 +18,7 @@ import PersonCell from "../components/common/PersonCell";
 import StatCard from "../components/common/StatCard";
 import { useMedLink } from "../context/MedLinkContext";
 import { useToast } from "../context/ToastContext";
+import { APPOINTMENT_STATUS } from "../utils/appointmentStatus";
 import { dateRange, formatDate, today } from "../utils/date";
 import { doctorName } from "../utils/format";
 
@@ -34,13 +35,13 @@ export default function ReportsPage() {
     const scoped = appointments.filter(appointment =>
       appointment.date >= startDate &&
       appointment.date <= endDate &&
-      appointment.status !== "Cancelled"
+      appointment.status !== APPOINTMENT_STATUS.CANCELLED
     );
-    const attended = scoped.filter(item => ["Completed", "Checked In"].includes(item.status));
+    const attended = scoped.filter(item => item.status === APPOINTMENT_STATUS.COMPLETED);
     const attendanceRate = scoped.length ? Math.round((attended.length / scoped.length) * 100) : 0;
     const doctorMetrics = doctors.map(doctor => {
       const doctorAppointments = scoped.filter(item => item.doctorId === doctor.doctorId);
-      const completed = doctorAppointments.filter(item => ["Completed", "Checked In"].includes(item.status)).length;
+      const completed = doctorAppointments.filter(item => item.status === APPOINTMENT_STATUS.COMPLETED).length;
       return {
         doctor,
         count: doctorAppointments.length,
@@ -156,7 +157,7 @@ export default function ReportsPage() {
           tone="green"
           label="Attendance Rate"
           value={`${report.attendanceRate}%`}
-          caption="Completed or checked-in visits"
+          caption="Completed visits"
         />
         <StatCard
           icon={Stethoscope}

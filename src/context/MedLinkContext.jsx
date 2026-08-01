@@ -17,6 +17,7 @@ import { hasPermission, PERMISSIONS, ROLES } from "../auth/accessControl";
 import { useAuth } from "./AuthContext";
 import { createSeedData } from "../data/seedData.js";
 import { today } from "../utils/date";
+import { APPOINTMENT_STATUS } from "../utils/appointmentStatus";
 
 const STORAGE_KEY_PREFIX = "medlink_offline_v1";
 const RESOURCE_KEYS = [
@@ -263,7 +264,7 @@ export function MedLinkProvider({ children }) {
     const appointmentId = nextIdentifier(state.appointments, "appointmentId", "A");
     const localRecord = {
       appointmentId,
-      status: "Scheduled",
+      status: APPOINTMENT_STATUS.SCHEDULED,
       ...appointment
     };
     const record = await runMutation(
@@ -373,8 +374,11 @@ export function MedLinkProvider({ children }) {
     },
     doctorById(doctorId) {
       return state.doctors.find(doctor => String(doctor.doctorId) === String(doctorId));
+    },
+    nurseById(nurseId) {
+      return state.nurses.find(nurse => String(nurse.nurseId) === String(nurseId));
     }
-  }), [state.doctors, state.patients]);
+  }), [state.doctors, state.nurses, state.patients]);
 
   const value = useMemo(
     () => ({

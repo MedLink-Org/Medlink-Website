@@ -1212,7 +1212,6 @@ h3 {
   color: var(--primary);
 }
 
-.status-checked-in,
 .status-completed,
 .status-paid {
   background: var(--secondary-soft);
@@ -1220,6 +1219,7 @@ h3 {
 }
 
 .status-cancelled,
+.status-no-show,
 .status-pending {
   background: var(--danger-soft);
   color: var(--danger);

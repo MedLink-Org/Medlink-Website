@@ -12,6 +12,7 @@ import { NavLink } from "react-router-dom";
 import { hasPermission, PERMISSIONS } from "../../auth/accessControl";
 import { useAuth } from "../../context/AuthContext";
 import { useMedLink } from "../../context/MedLinkContext";
+import { APPOINTMENT_STATUS } from "../../utils/appointmentStatus";
 import { today } from "../../utils/date";
 
 const navigation = [
@@ -35,7 +36,7 @@ export default function Sidebar({ open, onNavigate }) {
     offlineEnabled
   } = useMedLink();
   const pendingAppointments = appointments.filter(appointment =>
-    appointment.date >= today() && !["Completed", "Cancelled"].includes(appointment.status)
+    appointment.date >= today() && appointment.status === APPOINTMENT_STATUS.SCHEDULED
   ).length;
 
   return (

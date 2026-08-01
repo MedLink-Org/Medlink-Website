@@ -7,10 +7,10 @@ function toApiStaffMember(staffMember) {
     staff_id: staffMember.staffId ?? staffMember.staff_id ?? staffMember.id,
     first_name: staffMember.firstName ?? staffMember.first_name,
     last_name: staffMember.lastName ?? staffMember.last_name,
-    role: staffMember.role,
-    department: staffMember.department,
-    phone: staffMember.phone,
-    email: staffMember.email
+    date_of_birth: staffMember.dob ?? staffMember.dateOfBirth ?? staffMember.date_of_birth,
+    contact_info: staffMember.phone ?? staffMember.contactInfo ?? staffMember.contact_info,
+    address: staffMember.address,
+    date_of_employment: staffMember.dateOfEmployment ?? staffMember.date_of_employment
   };
 }
 
@@ -20,10 +20,10 @@ function normalizeStaffMember(staffMember = {}) {
     staffId: staffMember.staffId ?? staffMember.staff_id ?? staffMember.id ?? "",
     firstName: staffMember.firstName ?? staffMember.first_name ?? "",
     lastName: staffMember.lastName ?? staffMember.last_name ?? "",
-    role: staffMember.role ?? "",
-    department: staffMember.department ?? "",
-    phone: staffMember.phone ?? "",
-    email: staffMember.email ?? ""
+    dob: staffMember.dob ?? staffMember.dateOfBirth ?? staffMember.date_of_birth ?? "",
+    phone: staffMember.phone ?? staffMember.contactInfo ?? staffMember.contact_info ?? "",
+    address: staffMember.address ?? "",
+    dateOfEmployment: staffMember.dateOfEmployment ?? staffMember.date_of_employment ?? ""
   };
 }
 

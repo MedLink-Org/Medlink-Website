@@ -16,6 +16,7 @@ import PersonCell from "../components/common/PersonCell";
 import { useMedLink } from "../context/MedLinkContext";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { APPOINTMENT_STATUS } from "../utils/appointmentStatus";
 import { addDays, formatDate, today } from "../utils/date";
 
 const emptyPatient = {
@@ -24,15 +25,10 @@ const emptyPatient = {
   dob: "",
   gender: "",
   phone: "",
-  email: "",
-  address: "",
-  bloodType: "",
-  genotype: "",
-  medicalHistory: ""
+  address: ""
 };
 
 const phonePattern = /^\+?[\d\s()-]{7,20}$/;
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validatePatient(patient) {
   const errors = {};
@@ -42,7 +38,6 @@ function validatePatient(patient) {
     dob: "Date of birth",
     gender: "Gender",
     phone: "Phone number",
-    email: "Email address",
     address: "Address"
   };
 
@@ -51,9 +46,6 @@ function validatePatient(patient) {
   });
   if (patient.phone && !phonePattern.test(patient.phone)) {
     errors.phone = "Enter a valid phone number using 7-15 digits.";
-  }
-  if (patient.email && !emailPattern.test(patient.email)) {
-    errors.email = "Enter a valid email address.";
   }
   if (patient.dob && patient.dob >= today()) {
     errors.dob = "Date of birth must be before today.";
@@ -81,8 +73,7 @@ export default function PatientsPage() {
         patient.patientId,
         patient.firstName,
         patient.lastName,
-        patient.phone,
-        patient.email
+        patient.phone
       ].join(" ").toLowerCase();
       return !normalizedQuery || searchable.includes(normalizedQuery);
     });
@@ -182,26 +173,8 @@ export default function PatientsPage() {
             <FormField label="Phone Number" htmlFor="phone" required hint="Use 7-15 digits; spaces, +, brackets, and hyphens are allowed." error={errors.phone}>
               <input className={fieldClass("phone")} id="phone" name="phone" type="tel" autoComplete="tel" placeholder="+234 801 234 5678" value={form.phone} onChange={handleChange} />
             </FormField>
-            <FormField label="Email Address" htmlFor="email" required hint="Enter a valid email for appointment updates." error={errors.email}>
-              <input className={fieldClass("email")} id="email" name="email" type="email" autoComplete="email" placeholder="patient@example.com" value={form.email} onChange={handleChange} />
-            </FormField>
             <FormField className="span-2" label="Residential Address" htmlFor="address" required hint="Include enough detail for patient identification and correspondence." error={errors.address}>
               <textarea className={fieldClass("address")} id="address" name="address" rows="3" autoComplete="street-address" placeholder="Street address, city, and state" value={form.address} onChange={handleChange} />
-            </FormField>
-            <FormField label="Blood Type" htmlFor="bloodType" hint="Leave as unknown if it has not been confirmed." error={errors.bloodType}>
-              <select id="bloodType" name="bloodType" value={form.bloodType} onChange={handleChange}>
-                <option value="">Unknown</option>
-                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(type => <option key={type}>{type}</option>)}
-              </select>
-            </FormField>
-            <FormField label="Genotype" htmlFor="genotype" hint="Only record a clinically confirmed result." error={errors.genotype}>
-              <select id="genotype" name="genotype" value={form.genotype} onChange={handleChange}>
-                <option value="">Unknown</option>
-                {["AA", "AS", "SS", "AC"].map(type => <option key={type}>{type}</option>)}
-              </select>
-            </FormField>
-            <FormField className="span-2" label="Medical History" htmlFor="medicalHistory" hint="Do not include unverified diagnoses." error={errors.medicalHistory}>
-              <textarea id="medicalHistory" name="medicalHistory" rows="4" placeholder="Allergies, chronic conditions, current medication, or relevant notes" value={form.medicalHistory} onChange={handleChange} />
             </FormField>
           </div>
 
@@ -250,14 +223,14 @@ export default function PatientsPage() {
                 <th>Patient</th>
                 <th>Contact</th>
                 <th>Date of Birth</th>
-                <th>Blood Type</th>
+                <th>Address</th>
                 <th>Last Visit</th>
               </tr>
             </thead>
             <tbody>
               {filteredPatients.length ? filteredPatients.map(patient => {
                 const visits = appointments
-                  .filter(appointment => appointment.patientId === patient.patientId && appointment.status === "Completed")
+                  .filter(appointment => appointment.patientId === patient.patientId && appointment.status === APPOINTMENT_STATUS.COMPLETED)
                   .sort((a, b) => b.date.localeCompare(a.date));
                 return (
                   <tr key={patient.patientId}>
@@ -267,12 +240,12 @@ export default function PatientsPage() {
                         compact
                         person={patient}
                         title={`${patient.firstName} ${patient.lastName}`}
-                        subtitle={`${patient.gender} - ${patient.email || "No email"}`}
+                        subtitle={patient.gender || "Not specified"}
                       />
                     </td>
                     <td>{patient.phone || "-"}</td>
                     <td>{formatDate(patient.dob)}</td>
-                    <td>{patient.bloodType || "Unknown"}</td>
+                    <td>{patient.address || "-"}</td>
                     <td>{visits.length ? formatDate(visits[0].date) : "No completed visit"}</td>
                   </tr>
                 );

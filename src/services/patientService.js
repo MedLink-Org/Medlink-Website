@@ -19,11 +19,7 @@ function toApiPatient(patient) {
     date_of_birth: patient.dob ?? patient.dateOfBirth ?? patient.date_of_birth,
     contact_info: patient.phone ?? patient.contactInfo ?? patient.contact_info,
     gender: patient.gender,
-    address: patient.address,
-    email: patient.email,
-    blood_type: patient.bloodType ?? patient.blood_type,
-    genotype: patient.genotype,
-    medical_history: patient.medicalHistory ?? patient.medical_history
+    address: patient.address
   };
 }
 
@@ -35,12 +31,8 @@ function normalizePatient(patient = {}) {
     lastName: patient.lastName ?? patient.last_name ?? "",
     dob: normalizeDate(patient.dob ?? patient.dateOfBirth ?? patient.date_of_birth),
     phone: patient.phone ?? patient.contactInfo ?? patient.contact_info ?? "",
-    email: patient.email ?? "",
     gender: normalizeGender(patient.gender),
-    address: patient.address ?? "",
-    bloodType: patient.bloodType ?? patient.blood_type ?? "",
-    genotype: patient.genotype ?? "",
-    medicalHistory: patient.medicalHistory ?? patient.medical_history ?? ""
+    address: patient.address ?? ""
   };
 }
 

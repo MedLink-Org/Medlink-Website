@@ -2,16 +2,24 @@ import { asCollection, request } from "./apiClient";
 
 const RESOURCE_PATH = "/api/nurses";
 
+function normalizeDate(value) {
+  if (!value) return "";
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
+  }
+  const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : "";
+}
+
 function toApiNurse(nurse) {
   return {
     nurse_id: nurse.nurseId ?? nurse.nurse_id ?? nurse.id,
     first_name: nurse.firstName ?? nurse.first_name,
     last_name: nurse.lastName ?? nurse.last_name,
     date_of_birth: nurse.dob ?? nurse.dateOfBirth ?? nurse.date_of_birth,
-    specialization: nurse.specialization,
-    department: nurse.department,
-    phone: nurse.phone,
-    email: nurse.email
+    contact_info: nurse.phone ?? nurse.contactInfo ?? nurse.contact_info,
+    address: nurse.address,
+    date_of_employment: nurse.dateOfEmployment ?? nurse.date_of_employment
   };
 }
 
@@ -34,11 +42,10 @@ function normalizeNurse(nurse = {}) {
       ?? "",
     firstName: nurse.firstName ?? nurse.first_name ?? "",
     lastName: nurse.lastName ?? nurse.last_name ?? "",
-    dob: nurse.dob ?? nurse.dateOfBirth ?? nurse.date_of_birth ?? "",
-    specialization: nurse.specialization ?? "",
-    department: nurse.department ?? "",
-    phone: nurse.phone ?? "",
-    email: nurse.email ?? ""
+    dob: normalizeDate(nurse.dob ?? nurse.dateOfBirth ?? nurse.date_of_birth),
+    phone: nurse.phone ?? nurse.contactInfo ?? nurse.contact_info ?? "",
+    address: nurse.address ?? "",
+    dateOfEmployment: normalizeDate(nurse.dateOfEmployment ?? nurse.date_of_employment)
   };
 }
 
