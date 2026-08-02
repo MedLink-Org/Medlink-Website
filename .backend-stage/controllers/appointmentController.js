@@ -1,6 +1,15 @@
 const appointmentModel = require('../models/appointmentModel');
 const { canAccessAppointment } = require('../middleware/resourceAccess');
 
+const sendAppointmentError = (res, err) => {
+  if (err.code === '23514') {
+    return res.status(400).json({
+      error: 'Invalid appointment status. Use scheduled, completed, cancelled, or no-show',
+    });
+  }
+  return res.status(500).json({ error: err.message });
+};
+
 const scopedAppointments = (user) => {
   if (user.role === 'patient') {
     return appointmentModel.getAppointmentsByPatientId(user.profile_id);
@@ -83,7 +92,7 @@ const createAppointment = async (req, res) => {
     const result = await appointmentModel.createAppointment(data);
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendAppointmentError(res, err);
   }
 };
 
@@ -106,7 +115,7 @@ const updateAppointment = async (req, res) => {
     });
     res.status(200).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendAppointmentError(res, err);
   }
 };
 
@@ -132,4 +141,3 @@ module.exports = {
   updateAppointment,
   deleteAppointment,
 };
-

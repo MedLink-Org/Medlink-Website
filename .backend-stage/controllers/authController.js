@@ -1,5 +1,4 @@
 const userModel = require('../models/userModel');
-const patientModel = require('../models/patientModel');
 const {
   hashPassword,
   normalizeCredentials,
@@ -18,13 +17,14 @@ const sendAuthResponse = (res, statusCode, user) =>
     user,
   });
 
-const createAccount = async (email, password, role, profileId) => {
+const createAccount = async (email, password, role, profileId, fullName) => {
   const passwordHash = await hashPassword(password);
   const result = await userModel.createUser(
     email,
     passwordHash,
     role,
-    profileId || null
+    profileId || null,
+    fullName
   );
 
   if (result.rows.length === 0) {
@@ -36,62 +36,22 @@ const createAccount = async (email, password, role, profileId) => {
   return result.rows[0];
 };
 
-const registerPatient = async (req, res) => {
-  try {
-    const { email, password } = normalizeCredentials(req.body);
-    const profileId = String(req.body.profile_id || '').trim();
-
-    if (!profileId) {
-      return res.status(400).json({
-        error: 'Patient ID is required to create an account',
-      });
-    }
-
-    const patient = await patientModel.getPatientById(profileId);
-    if (patient.rows.length === 0) {
-      return res.status(404).json({
-        error: 'No patient record matches this Patient ID',
-      });
-    }
-
-    const user = await createAccount(email, password, 'patient', profileId);
-    return sendAuthResponse(res, 201, user);
-  } catch (error) {
-    if (error.code === 'AUTH_CONFIG_ERROR') {
-      console.error(error.message);
-      return res.status(500).json({ error: 'Authentication is not configured' });
-    }
-    if (error.statusCode) {
-      return res.status(error.statusCode).json({ error: error.message });
-    }
-    if (error.code === '23505' || error.code === '23514') {
-      return res.status(409).json({
-        error: 'The email or patient profile is already assigned',
-      });
-    }
-
-    console.error('Patient registration failed:', error);
-    return res.status(500).json({ error: 'Account creation failed' });
-  }
-};
-
 const register = async (req, res) => {
   try {
     const { email, password } = normalizeCredentials(req.body);
     const role = String(req.body.role || '').trim().toLowerCase();
     const profileId = String(req.body.profile_id || '').trim();
+    const fullName = String(
+      req.body.full_name
+      || req.body.name
+      || email.split('@')[0]
+    ).trim();
 
     if (!allowedRoles.has(role)) {
       return res.status(400).json({ error: 'A valid account role is required' });
     }
-    if (role !== 'staff' && !profileId) {
-      return res.status(400).json({
-        error: 'A linked clinic profile is required for this role',
-      });
-    }
-
-    const user = await createAccount(email, password, role, profileId);
-    return res.status(201).json({ user });
+    const user = await createAccount(email, password, role, profileId, fullName);
+    return sendAuthResponse(res, 201, user);
   } catch (error) {
     if (error.code === 'AUTH_CONFIG_ERROR') {
       console.error(error.message);
@@ -154,7 +114,7 @@ const getCurrentUser = async (req, res) => {
       return res.status(404).json({ error: 'User account not found' });
     }
 
-    return res.status(200).json(result.rows[0]);
+    return sendAuthResponse(res, 200, result.rows[0]);
   } catch (error) {
     console.error('Unable to load current user:', error);
     return res.status(500).json({ error: 'Unable to load current user' });
@@ -165,5 +125,4 @@ module.exports = {
   getCurrentUser,
   login,
   register,
-  registerPatient,
 };

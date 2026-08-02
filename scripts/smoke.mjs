@@ -125,24 +125,17 @@ function createMockApi() {
 
       if (request.method === "POST" && url.pathname === "/api/auth/register") {
         const body = await readJson(request);
-        const patient = state.patients.find(
-          item => String(item.patient_id) === String(body.profile_id)
-        );
-        if (!patient) {
-          sendJson(response, 404, { error: "No patient record matches this Patient ID." });
-          return;
-        }
         if (state.currentUser) {
-          sendJson(response, 409, { error: "The email or patient profile is already assigned." });
+          sendJson(response, 409, { error: "A user account with this email already exists." });
           return;
         }
         state.currentUser = {
           user_id: "U003",
-          full_name: `${patient.first_name} ${patient.last_name}`,
+          full_name: "",
           email: body.email,
           avatar_url: null,
-          role: "patient",
-          profile_id: patient.patient_id
+          role: body.role,
+          profile_id: null
         };
         state.password = body.password;
         sendJson(response, 201, {
@@ -177,7 +170,12 @@ function createMockApi() {
           sendJson(response, 401, { error: "Authentication required." });
           return;
         }
-        sendJson(response, 200, state.currentUser);
+        sendJson(response, 200, {
+          access_token: state.accessToken,
+          token_type: "Bearer",
+          expires_in: "7d",
+          user: state.currentUser
+        });
         return;
       }
 
@@ -193,6 +191,16 @@ function createMockApi() {
         sendJson(response, 503, { message: "Mock API unavailable." });
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/patients") {
+        const records = state.currentUser?.role === "patient"
+          ? state.patients.filter(
+            item => String(item.patient_id) === String(state.currentUser.profile_id)
+          )
+          : state.patients;
+        sendJson(response, 200, { data: records });
+        return;
+      }
+
       const collection = collections.get(url.pathname);
 
       if (request.method === "GET" && collection) {
@@ -201,8 +209,18 @@ function createMockApi() {
       }
 
       if (request.method === "POST" && url.pathname === "/api/patients") {
-        const record = await readJson(request);
+        const record = {
+          ...await readJson(request),
+          patient_id: `P${String(state.patients.length + 1).padStart(3, "0")}`
+        };
         state.patients.push(record);
+        if (state.currentUser?.role === "patient" && !state.currentUser.profile_id) {
+          state.currentUser = {
+            ...state.currentUser,
+            full_name: `${record.first_name} ${record.last_name}`,
+            profile_id: record.patient_id
+          };
+        }
         sendJson(response, 201, { data: record });
         return;
       }
@@ -470,6 +488,10 @@ async function run() {
       mockApi.state.appointments.at(-1)?.nurse_id === "N03",
       "Optional nurse assignment was not sent to the API."
     );
+    assert(
+      mockApi.state.appointments.at(-1)?.status === "scheduled",
+      "Appointment status was not sent in the backend's accepted format."
+    );
     let appointmentRow = page.locator("tbody tr").filter({ hasText: "Zara Mensah" });
     await appointmentRow.waitFor();
     await appointmentRow.getByRole("button", { name: "Complete" }).click();
@@ -596,19 +618,42 @@ async function run() {
     await page.getByLabel("Authentication method").getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByRole("heading", { name: "Create your MedLink account", exact: true }).waitFor();
     await page.locator("#authEmail").fill("grace.patient@example.com");
-    await page.locator("#authProfileId").fill("P001");
     await page.locator("#authPassword").fill("PatientPass123!");
     await page.locator("#authConfirmPassword").fill("PatientPass123!");
     await page.locator(".auth-form").getByRole("button", { name: "Create Account", exact: true }).click();
-    await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
-    await page.getByRole("button", { name: /Adaeze Okeke/ }).click();
+    await page.getByRole("heading", { name: "Patient Registration", exact: true }).waitFor();
+    assert(
+      await page.getByRole("link", { name: /Dashboard/ }).count() === 0,
+      "Patient accounts can see dashboard navigation."
+    );
+    assert(
+      await page.getByRole("link", { name: /Appointments/ }).count() === 0,
+      "Patient accounts can see appointment navigation."
+    );
+    assert(
+      await page.getByText("Patient Directory", { exact: true }).count() === 0,
+      "Patient accounts can see the patient directory."
+    );
+    await page.locator("#firstName").fill("Grace");
+    await page.locator("#lastName").fill("Nwosu");
+    await page.locator("#dob").fill("1998-08-14");
+    await page.locator("#gender").selectOption("Female");
+    await page.locator("#phone").fill("+234 803 555 0142");
+    await page.locator("#address").fill("12 Wetheral Road, Owerri, Imo State");
+    await page.getByRole("button", { name: "Register Patient", exact: true }).click();
+    await page.getByRole("heading", { name: "Registration complete", exact: true }).waitFor();
+    await page.getByText("Your patient profile is linked to this account as P008.", { exact: true }).waitFor();
+    await page.getByRole("button", { name: /Grace Nwosu/ }).click();
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
     await page.locator("#authEmail").fill("grace.patient@example.com");
     await page.locator("#authPassword").fill("PatientPass123!");
     await page.locator(".auth-form").getByRole("button", { name: "Sign In", exact: true }).click();
-    await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
-    await page.getByRole("button", { name: /Adaeze Okeke/ }).click();
+    await page.getByRole("heading", { name: "Patient Registration", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Registration complete", exact: true }).waitFor();
+    await page.goto(baseUrl);
+    await page.getByRole("heading", { name: "Patient Registration", exact: true }).waitFor();
+    await page.getByRole("button", { name: /Grace Nwosu/ }).click();
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
     await page.goto(`${baseUrl}/patients`);

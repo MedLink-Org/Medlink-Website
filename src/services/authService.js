@@ -70,18 +70,19 @@ export function signIn(email, password, options = {}) {
   return authenticate(AUTH_LOGIN_PATH, { email, password }, options);
 }
 
-export function signUp(email, password, role, profileId, options = {}) {
+export function signUp(email, password, role, options = {}) {
   return authenticate(AUTH_REGISTER_PATH, {
     email,
     password,
-    role,
-    profile_id: profileId || null
+    role
   }, options);
 }
 
 export async function getCurrentUser(options = {}) {
   if (!hasAccessToken()) return null;
-  return normalizeUser(await request(AUTH_SESSION_PATH, options));
+  const payload = await request(AUTH_SESSION_PATH, options);
+  if (payload?.access_token) setAccessToken(payload.access_token);
+  return normalizeUser(payload);
 }
 
 export function logout() {

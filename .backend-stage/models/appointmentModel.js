@@ -1,5 +1,11 @@
 const pool = require('../config/db');
 
+const normalizeStatus = (status) => String(status || 'scheduled')
+  .trim()
+  .toLowerCase()
+  .replace(/^checked in$/, 'scheduled')
+  .replace(/^canceled$/, 'cancelled');
+
 const getAllAppointment = () => pool.query('SELECT * FROM appointments');
 const getAppointmentById = (id) =>
   pool.query('SELECT * FROM appointments WHERE appointment_id = $1', [id]);
@@ -23,7 +29,7 @@ const createAppointment = (data) =>
       data.appointment_date,
       data.appointment_time,
       data.purpose || data.reason || data.visit_type || '',
-      data.status || 'scheduled',
+      normalizeStatus(data.status),
     ]
   );
 
@@ -46,7 +52,7 @@ const updateAppointment = (id, data) =>
       data.doctor_id,
       data.nurse_id || null,
       data.purpose || data.reason || data.visit_type || '',
-      data.status,
+      normalizeStatus(data.status),
       id,
     ]
   );

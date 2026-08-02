@@ -29,9 +29,25 @@ const getPatientById = async (req, res) => {
 
 const createPatient = async (req, res) => {
   try {
-    const result = await patientModel.createPatient(req.body);
+    if (req.user.role === 'patient' && req.user.profile_id) {
+      return res.status(409).json({
+        error: 'This account already has a registered patient profile',
+      });
+    }
+
+    const result = req.user.role === 'patient'
+      ? await patientModel.createPatientForUser(req.body, req.user.user_id)
+      : await patientModel.createPatient(req.body);
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    if (err.code === '23505') {
+      return res.status(409).json({
+        error: 'This account already has a registered patient profile',
+      });
+    }
     res.status(500).json({ error: err.message });
   }
 };
@@ -67,4 +83,3 @@ module.exports = {
   updatePatient,
   deletePatient,
 };
-

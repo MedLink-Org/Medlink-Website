@@ -1,6 +1,7 @@
 import { Bell, ChevronDown, LogOut, Menu, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useMatches, useNavigate } from "react-router-dom";
+import { ROLES } from "../../auth/accessControl";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { initials } from "../../utils/format";
@@ -18,6 +19,7 @@ export default function Topbar({ onMenuClick }) {
   const displayName = user?.name || user?.email?.split("@")[0] || "Clinic User";
   const nameParts = displayName.trim().split(/\s+/);
   const avatarText = initials(user?.firstName || nameParts[0], user?.lastName || nameParts.at(-1));
+  const isPatientAccount = user?.role === ROLES.PATIENT;
 
   useEffect(() => {
     function handlePointerDown(event) {
@@ -74,7 +76,7 @@ export default function Topbar({ onMenuClick }) {
       </div>
 
       <div className="topbar-actions">
-        <form className="global-search" onSubmit={handleSearch}>
+        {!isPatientAccount && <form className="global-search" onSubmit={handleSearch}>
           <Search />
           <label className="sr-only" htmlFor="globalSearch">Search patients</label>
           <input
@@ -85,7 +87,7 @@ export default function Topbar({ onMenuClick }) {
             value={query}
             onChange={event => setQuery(event.target.value)}
           />
-        </form>
+        </form>}
         <button className="icon-button notification-button" type="button" aria-label="Notifications" title="Notifications">
           <Bell />
           <span className="notification-dot" aria-hidden="true" />

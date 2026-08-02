@@ -85,8 +85,8 @@ export function AuthProvider({ children }) {
   );
 
   const signUp = useCallback(
-    (email, password, role, profileId) =>
-      runAuthentication(() => authService.signUp(email, password, role, profileId)),
+    (email, password, role) =>
+      runAuthentication(() => authService.signUp(email, password, role)),
     [runAuthentication]
   );
 

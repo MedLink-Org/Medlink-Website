@@ -1,7 +1,11 @@
 import { asCollection, request } from "./apiClient";
-import { normalizeAppointmentStatus } from "../utils/appointmentStatus";
+import {
+  normalizeAppointmentStatus,
+  toApiAppointmentStatus
+} from "../utils/appointmentStatus";
 
 const RESOURCE_PATH = "/api/appointments";
+
 
 function normalizeDate(value) {
   return typeof value === "string" ? value.slice(0, 10) : value || "";
@@ -17,7 +21,7 @@ function toApiAppointment(appointment) {
     appointment_time: appointment.time ?? appointment.appointment_time,
     visit_type: appointment.visitType ?? appointment.visit_type,
     reason: appointment.reason,
-    status: normalizeAppointmentStatus(appointment.status)
+    status: toApiAppointmentStatus(appointment.status)
   };
 }
 
@@ -32,7 +36,7 @@ function normalizeAppointment(appointment = {}) {
     time: appointment.time ?? appointment.appointment_time ?? "",
     visitType: appointment.visitType ?? appointment.visit_type ?? "",
     reason: appointment.reason ?? "",
-    status: normalizeAppointmentStatus(appointment.status)
+    status: normalizeAppointmentStatus(appointment.status) ?? "completed"
   };
 }
 

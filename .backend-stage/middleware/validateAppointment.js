@@ -28,8 +28,9 @@ const validateAppointment = (req, res, next) => {
   const normalizedStatus = String(status || '')
     .trim()
     .toLowerCase()
-    .replace(/^checked in$/, 'scheduled')
-    .replace(/^canceled$/, 'cancelled');
+    // .replace(/)
+    .replace(/^scheduled$/, 'scheduled')
+    .replace(/^cancelled$/, 'cancelled');
 
   if (status && !validStatuses.includes(normalizedStatus)) {
     return res.status(400).json({

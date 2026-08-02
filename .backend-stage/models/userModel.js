@@ -12,19 +12,20 @@ const publicUserFields = `
   last_login_at
 `;
 
-const createUser = (email, passwordHash, role, profileId) =>
+const createUser = (email, passwordHash, role, profileId, fullName) =>
   pool.query(
-    `INSERT INTO users (email, password_hash, role, profile_id)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO users (email, password_hash, role, profile_id, full_name)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (email)
      DO UPDATE SET
        password_hash = EXCLUDED.password_hash,
        role = EXCLUDED.role,
        profile_id = EXCLUDED.profile_id,
+       full_name = EXCLUDED.full_name,
        updated_at = NOW()
      WHERE users.password_hash IS NULL
      RETURNING ${publicUserFields}`,
-    [email, passwordHash, role, profileId || null]
+    [email, passwordHash, role, profileId || null, fullName]
   );
 
 const getUserByEmail = (email) =>
@@ -62,4 +63,3 @@ module.exports = {
   getUserById,
   updateLastLogin,
 };
-

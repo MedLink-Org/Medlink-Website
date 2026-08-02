@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { hasPermission, PERMISSIONS } from "../auth/accessControl";
+import { hasPermission, PERMISSIONS, ROLES } from "../auth/accessControl";
 import FormField from "../components/common/FormField";
 import PageHeading from "../components/common/PageHeading";
 import PanelHeader from "../components/common/PanelHeader";
@@ -54,8 +54,10 @@ function validatePatient(patient) {
 }
 
 export default function PatientsPage() {
-  const { user } = useAuth();
+  const { refreshSession, user } = useAuth();
+  const isPatientAccount = user?.role === ROLES.PATIENT;
   const canManagePatients = hasPermission(user?.role, PERMISSIONS.PATIENTS_MANAGE);
+  const canRegisterPatient = canManagePatients || (isPatientAccount && !user?.profileId);
   const { patients, appointments, addPatient } = useMedLink();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,6 +111,9 @@ export default function PatientsPage() {
     setStatus("Registering patient...");
     try {
       const record = await addPatient(form);
+      if (isPatientAccount) {
+        await refreshSession();
+      }
       setForm(emptyPatient);
       setStatus(`${record.patientId} was registered successfully.`);
       showToast("Patient registered", `${record.firstName} ${record.lastName} was added as ${record.patientId}.`);
@@ -141,7 +146,7 @@ export default function PatientsPage() {
         )}
       />
 
-      {canManagePatients && <section className="form-panel">
+      {canRegisterPatient && <section className="form-panel">
         <div className="section-heading">
           <span className="section-icon"><UserRoundPlus /></span>
           <div>
@@ -194,7 +199,19 @@ export default function PatientsPage() {
         </form>
       </section>}
 
-      <section className="panel table-panel">
+      {isPatientAccount && user?.profileId && (
+        <section className="form-panel">
+          <div className="section-heading">
+            <span className="section-icon"><ShieldCheck /></span>
+            <div>
+              <h3>Registration complete</h3>
+              <p>Your patient profile is linked to this account as {user.profileId}.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {!isPatientAccount && <section className="panel table-panel">
         <PanelHeader
           icon={FolderHeart}
           title="Patient Directory"
@@ -257,7 +274,7 @@ export default function PatientsPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
     </section>
   );
 }

@@ -45,13 +45,7 @@ const rolePermissions = {
     PERMISSIONS.MEDICAL_RECORDS_VIEW
   ],
   [ROLES.PATIENT]: [
-    PERMISSIONS.DASHBOARD_VIEW,
-    PERMISSIONS.PATIENTS_VIEW,
-    PERMISSIONS.DOCTORS_VIEW,
-    PERMISSIONS.APPOINTMENTS_VIEW,
-    PERMISSIONS.APPOINTMENTS_CREATE,
-    PERMISSIONS.BILLING_VIEW,
-    PERMISSIONS.MEDICAL_RECORDS_VIEW
+    PERMISSIONS.PATIENTS_VIEW
   ]
 };
 
@@ -82,5 +76,7 @@ export function roleLabel(role) {
 }
 
 export function defaultRouteForRole(role) {
-  return hasPermission(role, PERMISSIONS.DASHBOARD_VIEW) ? "/" : "/login";
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === ROLES.PATIENT) return "/patients";
+  return hasPermission(normalizedRole, PERMISSIONS.DASHBOARD_VIEW) ? "/" : "/login";
 }
