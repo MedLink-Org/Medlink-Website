@@ -1,5 +1,7 @@
 import {
   CircleAlert,
+  Eye,
+  EyeOff,
   LockKeyhole,
   LogIn,
   Mail,
@@ -13,15 +15,23 @@ import { useAuth } from "../context/AuthContext";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const signupRoles = [
+  { value: "staff", label: "Administrative Staff" },
   { value: "patient", label: "Patient" },
   { value: "doctor", label: "Doctor" },
-  { value: "nurse", label: "Nurse" },
-  { value: "staff", label: "Staff" }
+  { value: "nurse", label: "Nurse" }
 ];
 
 function locationPath(location) {
   const from = location.state?.from;
   return from ? `${from.pathname}${from.search}${from.hash}` : "/";
+}
+
+function onboardingPath(user) {
+  if (user?.profileId) return "";
+  if (user?.role === "doctor") return "/doctors";
+  if (user?.role === "nurse") return "/nurses";
+  if (user?.role === "patient") return "/patients";
+  return "";
 }
 
 function validate(mode, email, password, confirmPassword) {
@@ -39,7 +49,7 @@ function validate(mode, email, password, confirmPassword) {
 }
 
 export default function LoginPage() {
-  const { authenticated, error, loading, signIn, signUp } = useAuth();
+  const { authenticated, error, loading, signIn, signUp, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mode, setMode] = useState("signin");
@@ -47,13 +57,15 @@ export default function LoginPage() {
   const [role, setRole] = useState("patient");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const returnTo = locationPath(location);
 
-  if (!loading && authenticated) {
-    return <Navigate to={returnTo} replace />;
+  if (!loading && authenticated && !submitting) {
+    return <Navigate to={onboardingPath(user) || returnTo} replace />;
   }
 
   async function handleSubmit(event) {
@@ -71,12 +83,13 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
+      let authenticatedUser;
       if (mode === "signup") {
-        await signUp(normalizedEmail, password, role);
+        authenticatedUser = await signUp(normalizedEmail, password, role);
       } else {
-        await signIn(normalizedEmail, password);
+        authenticatedUser = await signIn(normalizedEmail, password);
       }
-      navigate(returnTo, { replace: true });
+      navigate(onboardingPath(authenticatedUser) || returnTo, { replace: true });
     } catch (authenticationError) {
       setRequestError(authenticationError.message || "Authentication could not be completed.");
     } finally {
@@ -103,8 +116,8 @@ export default function LoginPage() {
           </h1>
           <p>
             {mode === "signup"
-              ? "Choose your clinic role. Patient accounts complete registration after signing in."
-              : "Use your assigned staff, doctor, nurse, or patient account."}
+              ? "Choose an administrative staff, patient, doctor, or nurse account."
+              : "Use your administrative staff, doctor, nurse, or patient account."}
           </p>
         </div>
 
@@ -182,7 +195,7 @@ export default function LoginPage() {
             <LockKeyhole />
             <input
               id="authPassword"
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               placeholder="At least 8 characters"
               value={password}
@@ -192,6 +205,15 @@ export default function LoginPage() {
                 if (errors.password) setErrors(current => ({ ...current, password: "" }));
               }}
             />
+            <button
+              className="password-toggle"
+              type="button"
+              onClick={() => setShowPassword(current => !current)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              title={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff /> : <Eye />}
+            </button>
           </div>
           <span className="field-error">{errors.password}</span>
 
@@ -202,7 +224,7 @@ export default function LoginPage() {
                 <LockKeyhole />
                 <input
                   id="authConfirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
                   placeholder="Enter the password again"
                   value={confirmPassword}
@@ -214,6 +236,15 @@ export default function LoginPage() {
                     }
                   }}
                 />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  onClick={() => setShowConfirmPassword(current => !current)}
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  title={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                >
+                  {showConfirmPassword ? <EyeOff /> : <Eye />}
+                </button>
               </div>
               <span className="field-error">{errors.confirmPassword}</span>
             </>
@@ -229,8 +260,8 @@ export default function LoginPage() {
 
         <p className="auth-footnote">
           {mode === "signup"
-            ? "Patient accounts are taken directly to patient registration after account creation."
-            : "Staff and clinician roles are assigned by clinic administration."}
+            ? "Clinician and patient accounts continue to their profile registration after account creation."
+            : "Sign in with the email and password for your MedLink account."}
         </p>
       </section>
     </main>

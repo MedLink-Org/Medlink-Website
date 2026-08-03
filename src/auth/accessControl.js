@@ -24,14 +24,15 @@ export const PERMISSIONS = Object.freeze({
 });
 
 const rolePermissions = {
-  [ROLES.STAFF]: Object.values(PERMISSIONS),
+  [ROLES.STAFF]: Object.values(PERMISSIONS).filter(
+    permission => permission !== PERMISSIONS.APPOINTMENTS_CREATE
+  ),
   [ROLES.DOCTOR]: [
     PERMISSIONS.DASHBOARD_VIEW,
     PERMISSIONS.PATIENTS_VIEW,
     PERMISSIONS.DOCTORS_VIEW,
     PERMISSIONS.NURSES_VIEW,
     PERMISSIONS.APPOINTMENTS_VIEW,
-    PERMISSIONS.APPOINTMENTS_UPDATE,
     PERMISSIONS.REPORTS_VIEW,
     PERMISSIONS.MEDICAL_RECORDS_VIEW
   ],
@@ -41,16 +42,19 @@ const rolePermissions = {
     PERMISSIONS.DOCTORS_VIEW,
     PERMISSIONS.NURSES_VIEW,
     PERMISSIONS.APPOINTMENTS_VIEW,
-    PERMISSIONS.APPOINTMENTS_UPDATE,
     PERMISSIONS.MEDICAL_RECORDS_VIEW
   ],
   [ROLES.PATIENT]: [
-    PERMISSIONS.PATIENTS_VIEW
+    PERMISSIONS.DASHBOARD_VIEW,
+    PERMISSIONS.PATIENTS_VIEW,
+    PERMISSIONS.DOCTORS_VIEW,
+    PERMISSIONS.APPOINTMENTS_VIEW,
+    PERMISSIONS.APPOINTMENTS_CREATE
   ]
 };
 
 const roleLabels = {
-  [ROLES.STAFF]: "Clinic Staff",
+  [ROLES.STAFF]: "Administrative Staff",
   [ROLES.DOCTOR]: "Doctor",
   [ROLES.NURSE]: "Nurse",
   [ROLES.PATIENT]: "Patient"
@@ -77,6 +81,5 @@ export function roleLabel(role) {
 
 export function defaultRouteForRole(role) {
   const normalizedRole = normalizeRole(role);
-  if (normalizedRole === ROLES.PATIENT) return "/patients";
   return hasPermission(normalizedRole, PERMISSIONS.DASHBOARD_VIEW) ? "/" : "/login";
 }

@@ -6,7 +6,7 @@ import {
   X
 } from "lucide-react";
 import { useState } from "react";
-import { hasPermission, PERMISSIONS } from "../auth/accessControl";
+import { hasPermission, PERMISSIONS, ROLES } from "../auth/accessControl";
 import FormField from "../components/common/FormField";
 import PageHeading from "../components/common/PageHeading";
 import PanelHeader from "../components/common/PanelHeader";
@@ -63,8 +63,10 @@ function validateDoctor(doctor) {
 }
 
 export default function DoctorsPage() {
-  const { user } = useAuth();
+  const { refreshSession, user } = useAuth();
   const canManageDoctors = hasPermission(user?.role, PERMISSIONS.DOCTORS_MANAGE);
+  const isDoctorAccount = user?.role === ROLES.DOCTOR;
+  const canRegisterDoctor = canManageDoctors || (isDoctorAccount && !user?.profileId);
   const { doctors, addDoctor } = useMedLink();
   const { showToast } = useToast();
   const [form, setForm] = useState(emptyDoctor);
@@ -104,6 +106,9 @@ export default function DoctorsPage() {
     setStatus("Registering doctor...");
     try {
       const record = await addDoctor(form);
+      if (isDoctorAccount) {
+        await refreshSession();
+      }
       setForm(emptyDoctor);
       setStatus(`${record.doctorId} was registered successfully.`);
       showToast(
@@ -128,12 +133,12 @@ export default function DoctorsPage() {
     <section className="view" aria-labelledby="doctorsHeading">
       <PageHeading
         eyebrow="Clinical team"
-        title={canManageDoctors ? "Doctor Registration" : "Doctor Directory"}
+        title={canRegisterDoctor ? "Doctor Registration" : "Doctor Directory"}
         titleId="doctorsHeading"
-        description={canManageDoctors
+        description={canRegisterDoctor
           ? "Register clinicians so they can be assigned to patient appointments."
           : "Review clinicians available for patient appointments."}
-        actions={canManageDoctors ? (
+        actions={canRegisterDoctor ? (
           <div className="page-badge">
             <Stethoscope />
             New doctors sync to the database
@@ -141,7 +146,7 @@ export default function DoctorsPage() {
         ) : null}
       />
 
-      {canManageDoctors && <section className="form-panel">
+      {canRegisterDoctor && <section className="form-panel">
         <div className="section-heading">
           <span className="section-icon section-icon-green"><CircleUserRound /></span>
           <div>
@@ -252,6 +257,18 @@ export default function DoctorsPage() {
           </div>
         </form>
       </section>}
+
+      {isDoctorAccount && user?.profileId && (
+        <section className="form-panel registration-complete">
+          <div className="section-heading">
+            <span className="section-icon section-icon-green"><Stethoscope /></span>
+            <div>
+              <h3>Registration complete</h3>
+              <p>Your doctor profile is linked to this account as {user.profileId}.</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="panel table-panel">
         <PanelHeader

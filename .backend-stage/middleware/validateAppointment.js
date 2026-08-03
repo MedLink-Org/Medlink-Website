@@ -8,6 +8,12 @@ const validateAppointment = (req, res, next) => {
   } = req.body || {};
   const missingFields = [];
 
+  if (req.user?.role === 'patient' && !req.user.profile_id) {
+    return res.status(409).json({
+      error: 'Complete patient registration before booking an appointment',
+    });
+  }
+
   if (!patient_id && req.user?.role !== 'patient') missingFields.push('patient_id');
   if (!doctor_id) missingFields.push('doctor_id');
   if (!appointment_date) missingFields.push('appointment_date');

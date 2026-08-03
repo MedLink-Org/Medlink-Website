@@ -10,9 +10,8 @@ router.get('/patient/:patientId', authorize('staff', 'doctor', 'nurse', 'patient
 router.get('/doctor/:doctorId', authorize('staff', 'doctor', 'nurse'), appointmentController.getAppointmentsByDoctorId);
 router.get('/nurse/:nurseId', authorize('staff', 'doctor', 'nurse'), appointmentController.getAppointmentsByNurseId);
 router.get('/:id', authorize('staff', 'doctor', 'nurse', 'patient'), appointmentController.getAppointmentById);
-router.post('/', authorize('staff', 'patient'), validateAppointment, appointmentController.createAppointment);
-router.put('/:id', authorize('staff', 'doctor', 'nurse'), validateAppointment, appointmentController.updateAppointment);
+router.post('/', authorize('patient'), validateAppointment, appointmentController.createAppointment);
+router.put('/:id', authorize('staff'), validateAppointment, appointmentController.updateAppointment);
 router.delete('/:id', authorize('staff'), appointmentController.deleteAppointment);
 
 module.exports = router;
-

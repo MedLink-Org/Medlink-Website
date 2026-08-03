@@ -4,16 +4,19 @@ import {
   CalendarClock,
   CalendarPlus2,
   Check,
+  ClipboardCheck,
   UserX,
   X,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { hasPermission, PERMISSIONS, ROLES } from '../auth/accessControl'
 import FormField from '../components/common/FormField'
 import PageHeading from '../components/common/PageHeading'
 import PanelHeader from '../components/common/PanelHeader'
 import PersonCell from '../components/common/PersonCell'
 import StatusBadge from '../components/common/StatusBadge'
+import StatusSelect from '../components/common/StatusSelect'
 import { useMedLink } from '../context/MedLinkContext'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -33,7 +36,6 @@ function createEmptyAppointment() {
     status: APPOINTMENT_STATUS.SCHEDULED,
     date: today(),
     time: '',
-    visitType: '',
     reason: '',
   }
 }
@@ -42,8 +44,9 @@ export default function AppointmentsPage() {
   const { user } = useAuth()
   const canCreateAppointments = hasPermission(user?.role, PERMISSIONS.APPOINTMENTS_CREATE)
   const canUpdateAppointments = hasPermission(user?.role, PERMISSIONS.APPOINTMENTS_UPDATE)
+  const isPatientAccount = user?.role === ROLES.PATIENT
+  const canBookAppointment = isPatientAccount && Boolean(user?.profileId) && canCreateAppointments
   const {
-    patients,
     doctors,
     nurses,
     appointments,
@@ -83,11 +86,9 @@ export default function AppointmentsPage() {
   function validate() {
     const validationErrors = {}
     const requiredFields = {
-      ...(patientProfileId ? {} : { patientId: 'Patient' }),
       doctorId: 'Doctor',
       date: 'Appointment date',
       time: 'Appointment time',
-      visitType: 'Visit type',
       reason: 'Reason for visit',
     }
 
@@ -180,9 +181,17 @@ export default function AppointmentsPage() {
     <section className="view" aria-labelledby="appointmentsHeading">
       <PageHeading
         eyebrow="Clinic scheduling"
-        title="Appointment Management"
+        title={isPatientAccount
+          ? "My Appointments"
+          : canUpdateAppointments
+            ? "Appointment Management"
+            : "Assigned Appointments"}
         titleId="appointmentsHeading"
-        description="Schedule consultations and prevent doctor booking conflicts."
+        description={isPatientAccount
+          ? "Book an appointment and review your upcoming or previous consultations."
+          : canUpdateAppointments
+            ? "Review the clinic schedule and update appointment attendance."
+            : "Review your assigned consultations and appointment details."}
         actions={
           <span className="date-chip">
             <Calendar />
@@ -191,7 +200,7 @@ export default function AppointmentsPage() {
         }
       />
 
-      {canCreateAppointments && (
+      {canBookAppointment && (
         <section className="form-panel">
           <div className="section-heading">
             <span className="section-icon section-icon-green">
@@ -199,38 +208,12 @@ export default function AppointmentsPage() {
             </span>
             <div>
               <h3>Book an appointment</h3>
-              <p>Choose a registered patient, doctor, and available time.</p>
+              <p>Choose a doctor and an available consultation time.</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-grid">
-              {!patientProfileId && (
-                <FormField
-                  label="Patient"
-                  htmlFor="appointmentPatient"
-                  required
-                  hint="Register a new patient first if they are not listed."
-                  error={errors.patientId}
-                >
-                  <select
-                    className={fieldClass('patientId')}
-                    id="appointmentPatient"
-                    name="patientId"
-                    value={form.patientId}
-                    onChange={handleChange}
-                  >
-                    <option value="">Select a registered patient</option>
-                    {[...patients]
-                      .sort((a, b) => a.lastName.localeCompare(b.lastName))
-                      .map((patient) => (
-                        <option value={patient.patientId} key={patient.patientId}>
-                          {patient.patientId} - {patient.firstName} {patient.lastName}
-                        </option>
-                      ))}
-                  </select>
-                </FormField>
-              )}
               <FormField
                 label="Doctor"
                 htmlFor="appointmentDoctor"
@@ -275,24 +258,6 @@ export default function AppointmentsPage() {
                 </select>
               </FormField>
               <FormField
-                label="Appointment Status"
-                htmlFor="appointmentStatus"
-                hint="Select the current appointment state."
-              >
-                <select
-                  id="appointmentStatus"
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                >
-                  {APPOINTMENT_STATUSES.map((option) => (
-                    <option key={option} value={option}>
-                      {appointmentStatusLabel(option)}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField
                 label="Appointment Date"
                 htmlFor="appointmentDate"
                 required
@@ -326,32 +291,6 @@ export default function AppointmentsPage() {
                   value={form.time}
                   onChange={handleChange}
                 />
-              </FormField>
-              <FormField
-                label="Visit Type"
-                htmlFor="appointmentType"
-                required
-                hint="This helps staff prepare the appropriate room."
-                error={errors.visitType}
-              >
-                <select
-                  className={fieldClass('visitType')}
-                  id="appointmentType"
-                  name="visitType"
-                  value={form.visitType}
-                  onChange={handleChange}
-                >
-                  <option value="">Select visit type</option>
-                  {[
-                    'New consultation',
-                    'Follow-up',
-                    'Routine checkup',
-                    'Procedure',
-                    'Emergency review',
-                  ].map((type) => (
-                    <option key={type}>{type}</option>
-                  ))}
-                </select>
               </FormField>
               <FormField
                 label="Reason for Visit"
@@ -399,22 +338,45 @@ export default function AppointmentsPage() {
         </section>
       )}
 
+      {isPatientAccount && !patientProfileId && (
+        <section className="form-panel appointment-onboarding">
+          <div className="section-heading">
+            <span className="section-icon section-icon-green">
+              <ClipboardCheck />
+            </span>
+            <div>
+              <h3>Complete patient registration first</h3>
+              <p>Your patient profile must be linked before you can book an appointment.</p>
+            </div>
+          </div>
+          <Link className="button button-primary" to="/patients">
+            Complete registration
+          </Link>
+        </section>
+      )}
+
       <section className="panel table-panel">
         <PanelHeader
           icon={CalendarClock}
           title="Appointment Schedule"
-          description="Manage scheduled, completed, and cancelled visits."
+          description={canUpdateAppointments
+            ? "Review scheduled visits and update attendance status."
+            : "Review scheduled, completed, cancelled, and missed visits."}
           action={
             <label className="filter-select">
               <span>Status</span>
-              <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+              <StatusSelect
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                ariaLabel="Filter appointments by status"
+              >
                 <option value="all">All appointments</option>
                 {APPOINTMENT_STATUSES.map((option) => (
                   <option key={option} value={option}>
                     {appointmentStatusLabel(option)}
                   </option>
                 ))}
-              </select>
+              </StatusSelect>
             </label>
           }
         />
@@ -426,9 +388,8 @@ export default function AppointmentsPage() {
                 <th>Patient</th>
                 <th>Doctor</th>
                 <th>Nurse</th>
-                <th>Visit Type</th>
                 <th>Status</th>
-                <th>Actions</th>
+                {canUpdateAppointments && <th>Admin Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -464,14 +425,12 @@ export default function AppointmentsPage() {
                         <small>{doctor?.specialization}</small>
                       </td>
                       <td>{nurse ? `${nurse.firstName} ${nurse.lastName}` : 'Unassigned'}</td>
-                      <td>{appointment.visitType}</td>
                       <td>
                         <StatusBadge status={appointment.status} />
                       </td>
-                      <td>
+                      {canUpdateAppointments && <td>
                         <div className="table-actions">
-                          {canUpdateAppointments &&
-                            appointment.status === APPOINTMENT_STATUS.SCHEDULED && (
+                          {appointment.status === APPOINTMENT_STATUS.SCHEDULED && (
                               <>
                                 <button
                                   className="table-action"
@@ -517,17 +476,16 @@ export default function AppointmentsPage() {
                                 </button>
                               </>
                             )}
-                          {(!canUpdateAppointments ||
-                            appointment.status !== APPOINTMENT_STATUS.SCHEDULED) &&
+                          {appointment.status !== APPOINTMENT_STATUS.SCHEDULED &&
                             '-'}
                         </div>
-                      </td>
+                      </td>}
                     </tr>
                   )
                 })
               ) : (
                 <tr>
-                  <td colSpan="7">
+                  <td colSpan={canUpdateAppointments ? "6" : "5"}>
                     <div className="empty-state">No appointments match this status.</div>
                   </td>
                 </tr>

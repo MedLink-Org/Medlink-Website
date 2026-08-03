@@ -136,20 +136,20 @@ export function createSeedData() {
   ];
 
   const appointments = [
-    { appointmentId: "A001", patientId: "P001", doctorId: "D01", date: addDays(currentDate, -6), time: "09:00", visitType: "New consultation", reason: "Persistent cough", status: "completed" },
-    { appointmentId: "A002", patientId: "P003", doctorId: "D02", date: addDays(currentDate, -5), time: "10:30", visitType: "Routine checkup", reason: "Pediatric wellness review", status: "completed" },
-    { appointmentId: "A003", patientId: "P004", doctorId: "D01", date: addDays(currentDate, -4), time: "11:00", visitType: "Follow-up", reason: "Diabetes review", status: "completed" },
-    { appointmentId: "A004", patientId: "P006", doctorId: "D03", date: addDays(currentDate, -3), time: "13:30", visitType: "Follow-up", reason: "Cardiac assessment", status: "completed" },
-    { appointmentId: "A005", patientId: "P005", doctorId: "D04", date: addDays(currentDate, -2), time: "09:30", visitType: "New consultation", reason: "Skin irritation", status: "completed" },
-    { appointmentId: "A006", patientId: "P002", doctorId: "D01", date: addDays(currentDate, -1), time: "15:00", visitType: "Follow-up", reason: "Blood pressure review", status: "cancelled" },
-    { appointmentId: "A007", patientId: "P001", doctorId: "D01", date: currentDate, time: "08:30", visitType: "Follow-up", reason: "Respiratory review", status: "no-show" },
-    { appointmentId: "A008", patientId: "P003", doctorId: "D02", date: currentDate, time: "09:15", visitType: "Routine checkup", reason: "Immunization review", status: "scheduled" },
-    { appointmentId: "A009", patientId: "P006", doctorId: "D03", date: currentDate, time: "10:00", visitType: "Follow-up", reason: "ECG results review", status: "scheduled" },
-    { appointmentId: "A010", patientId: "P005", doctorId: "D04", date: currentDate, time: "11:30", visitType: "Procedure", reason: "Dermatology procedure", status: "scheduled" },
-    { appointmentId: "A011", patientId: "P004", doctorId: "D01", date: currentDate, time: "13:00", visitType: "Follow-up", reason: "Glucose monitoring", status: "scheduled" },
-    { appointmentId: "A012", patientId: "P002", doctorId: "D01", date: addDays(currentDate, 1), time: "09:00", visitType: "Follow-up", reason: "Hypertension management", status: "scheduled" },
-    { appointmentId: "A013", patientId: "P003", doctorId: "D02", date: addDays(currentDate, 2), time: "10:30", visitType: "Follow-up", reason: "Laboratory results", status: "scheduled" },
-    { appointmentId: "A014", patientId: "P006", doctorId: "D03", date: addDays(currentDate, 3), time: "14:00", visitType: "Routine checkup", reason: "Cardiology review", status: "scheduled" }
+    { appointmentId: "A001", patientId: "P001", doctorId: "D01", date: addDays(currentDate, -6), time: "09:00", reason: "Persistent cough", status: "completed" },
+    { appointmentId: "A002", patientId: "P003", doctorId: "D02", date: addDays(currentDate, -5), time: "10:30", reason: "Pediatric wellness review", status: "completed" },
+    { appointmentId: "A003", patientId: "P004", doctorId: "D01", date: addDays(currentDate, -4), time: "11:00", reason: "Diabetes review", status: "completed" },
+    { appointmentId: "A004", patientId: "P006", doctorId: "D03", date: addDays(currentDate, -3), time: "13:30", reason: "Cardiac assessment", status: "completed" },
+    { appointmentId: "A005", patientId: "P005", doctorId: "D04", date: addDays(currentDate, -2), time: "09:30", reason: "Skin irritation", status: "completed" },
+    { appointmentId: "A006", patientId: "P002", doctorId: "D01", date: addDays(currentDate, -1), time: "15:00", reason: "Blood pressure review", status: "cancelled" },
+    { appointmentId: "A007", patientId: "P001", doctorId: "D01", date: currentDate, time: "08:30", reason: "Respiratory review", status: "no-show" },
+    { appointmentId: "A008", patientId: "P003", doctorId: "D02", date: currentDate, time: "09:15", reason: "Immunization review", status: "scheduled" },
+    { appointmentId: "A009", patientId: "P006", doctorId: "D03", date: currentDate, time: "10:00", reason: "ECG results review", status: "scheduled" },
+    { appointmentId: "A010", patientId: "P005", doctorId: "D04", date: currentDate, time: "11:30", reason: "Dermatology procedure", status: "scheduled" },
+    { appointmentId: "A011", patientId: "P004", doctorId: "D01", date: currentDate, time: "13:00", reason: "Glucose monitoring", status: "scheduled" },
+    { appointmentId: "A012", patientId: "P002", doctorId: "D01", date: addDays(currentDate, 1), time: "09:00", reason: "Hypertension management", status: "scheduled" },
+    { appointmentId: "A013", patientId: "P003", doctorId: "D02", date: addDays(currentDate, 2), time: "10:30", reason: "Laboratory results", status: "scheduled" },
+    { appointmentId: "A014", patientId: "P006", doctorId: "D03", date: addDays(currentDate, 3), time: "14:00", reason: "Cardiology review", status: "scheduled" }
   ];
 
   const bills = [

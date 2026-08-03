@@ -6,7 +6,6 @@ import {
   CircleDollarSign,
   Clock3,
   DoorOpen,
-  HeartPulse,
   LogIn,
   ReceiptText,
   TriangleAlert,
@@ -14,7 +13,7 @@ import {
   Users
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { hasPermission, PERMISSIONS } from "../auth/accessControl";
+import { hasPermission, PERMISSIONS, ROLES } from "../auth/accessControl";
 import MiniBarChart from "../components/charts/MiniBarChart";
 import EmptyState from "../components/common/EmptyState";
 import PageHeading from "../components/common/PageHeading";
@@ -43,6 +42,8 @@ export default function DashboardPage() {
   const displayName = user?.firstName || user?.name?.split(/\s+/)[0] || "there";
   const canManagePatients = hasPermission(user?.role, PERMISSIONS.PATIENTS_MANAGE);
   const canCreateAppointments = hasPermission(user?.role, PERMISSIONS.APPOINTMENTS_CREATE);
+  const canViewBilling = hasPermission(user?.role, PERMISSIONS.BILLING_VIEW);
+  const isPatientAccount = user?.role === ROLES.PATIENT;
 
   const todaysAppointments = appointments
     .filter(appointment =>
@@ -59,6 +60,12 @@ export default function DashboardPage() {
   const pendingBills = bills.filter(bill => bill.status === "Pending");
   const outstanding = pendingBills.reduce((sum, bill) => sum + Number(bill.amount), 0);
   const uniquePatients = new Set(todaysAppointments.map(item => item.patientId)).size;
+  const completedAppointments = appointments.filter(
+    item => item.status === APPOINTMENT_STATUS.COMPLETED
+  ).length;
+  const missedAppointments = appointments.filter(
+    item => item.status === APPOINTMENT_STATUS.NO_SHOW
+  ).length;
 
   const arrivals = appointments
     .filter(appointment =>
@@ -68,19 +75,30 @@ export default function DashboardPage() {
     .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
     .slice(0, 5);
 
-  const alerts = [
-    ...(pendingBills.length ? [{
+  const nextAppointment = arrivals[0];
+  const nextDoctor = nextAppointment ? doctorById(nextAppointment.doctorId) : null;
+  const alerts = isPatientAccount
+    ? [{
+        icon: nextAppointment ? CalendarCheck2 : CalendarPlus,
+        title: nextAppointment ? "Next appointment" : "No upcoming appointments",
+        message: nextAppointment
+          ? `${formatDate(nextAppointment.date)} at ${formatTime(nextAppointment.time)} with ${doctorName(nextDoctor)}.`
+          : "Book an appointment when you are ready to schedule your next consultation.",
+        time: nextAppointment ? "Upcoming" : "Available"
+      }]
+    : [
+    ...(canViewBilling && pendingBills.length ? [{
       icon: ReceiptText,
       title: "Outstanding patient balances",
       message: `${pendingBills.length} bill${pendingBills.length === 1 ? " remains" : "s remain"} unpaid and requires finance desk follow-up.`,
       time: "Today"
     }] : []),
-    {
-      icon: HeartPulse,
-      title: "Clinical record review",
-      message: "Confirm Samuel Udo's current cardiac medication before the afternoon review.",
-      time: "1 hr"
-    }
+    ...(nextAppointment ? [{
+      icon: CalendarCheck2,
+      title: "Next scheduled consultation",
+      message: `${formatDate(nextAppointment.date)} at ${formatTime(nextAppointment.time)} with ${doctorName(nextDoctor)}.`,
+      time: "Upcoming"
+    }] : [])
   ].slice(0, 3);
 
   const activityData = dateRange(currentDate, 7).map(date => ({
@@ -96,7 +114,9 @@ export default function DashboardPage() {
         eyebrow={formatLongDate(currentDate)}
         title={`${greeting}, ${displayName}`}
         titleId="dashboardHeading"
-        description="Monitor appointments, arrivals, patient activity, and urgent clinic tasks."
+        description={isPatientAccount
+          ? "Review your appointments, attendance history, and upcoming consultations."
+          : "Monitor appointments, arrivals, patient activity, and urgent clinic tasks."}
         actions={canManagePatients || canCreateAppointments ? (
           <div className="heading-actions">
             {canManagePatients && <button className="button button-secondary" type="button" onClick={() => navigate("/patients")}>
@@ -112,10 +132,21 @@ export default function DashboardPage() {
       />
 
       <div className="stat-grid">
-        <StatCard icon={Users} label="Total Patients Today" value={uniquePatients} caption={`${todaysAppointments.length} clinic visits scheduled`} />
-        <StatCard icon={CalendarCheck2} tone="green" label="Total Appointments" value={todaysAppointments.length} caption={`${completedToday} completed today`} />
-        <StatCard icon={Clock3} tone="amber" label="Pending Appointments" value={pendingToday} caption="Awaiting consultation" />
-        <StatCard icon={CircleDollarSign} tone="red" label="Pending Bills" value={pendingBills.length} caption={`${formatCurrency(outstanding)} outstanding`} />
+        {isPatientAccount ? (
+          <>
+            <StatCard icon={CalendarCheck2} label="All Appointments" value={appointments.length} caption="Your complete appointment history" />
+            <StatCard icon={Clock3} tone="amber" label="Upcoming Appointments" value={arrivals.length} caption={`${pendingToday} scheduled today`} />
+            <StatCard icon={CalendarRange} tone="green" label="Completed Visits" value={completedAppointments} caption="Consultations attended" />
+            <StatCard icon={TriangleAlert} tone="red" label="Missed Visits" value={missedAppointments} caption="Recorded no-shows" />
+          </>
+        ) : (
+          <>
+            <StatCard icon={Users} label="Total Patients Today" value={uniquePatients} caption={`${todaysAppointments.length} clinic visits scheduled`} />
+            <StatCard icon={CalendarCheck2} tone="green" label="Total Appointments" value={todaysAppointments.length} caption={`${completedToday} completed today`} />
+            <StatCard icon={Clock3} tone="amber" label="Pending Appointments" value={pendingToday} caption="Awaiting consultation" />
+            <StatCard icon={CircleDollarSign} tone="red" label="Pending Bills" value={pendingBills.length} caption={`${formatCurrency(outstanding)} outstanding`} />
+          </>
+        )}
       </div>
 
       <div className="dashboard-layout">
@@ -143,7 +174,7 @@ export default function DashboardPage() {
                   <PersonCell
                     person={patient}
                     title={patient ? `${patient.firstName} ${patient.lastName}` : appointment.patientId}
-                    subtitle={appointment.visitType}
+                    subtitle={appointment.reason}
                   />
                   <PersonCell
                     doctor
@@ -186,8 +217,8 @@ export default function DashboardPage() {
           <PanelHeader
             urgent
             icon={TriangleAlert}
-            title="Urgent Notifications"
-            description="Items requiring staff attention"
+            title={isPatientAccount ? "Appointment Update" : "Notifications"}
+            description={isPatientAccount ? "Your next scheduling action" : "Items requiring attention"}
             action={<span className="alert-count">{alerts.length}</span>}
           />
           <div className="notification-list">

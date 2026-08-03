@@ -28,7 +28,7 @@ const createAppointment = (data) =>
       data.nurse_id || null,
       data.appointment_date,
       data.appointment_time,
-      data.purpose || data.reason || data.visit_type || '',
+      data.purpose || data.reason || '',
       normalizeStatus(data.status),
     ]
   );
@@ -51,7 +51,7 @@ const updateAppointment = (id, data) =>
       data.patient_id,
       data.doctor_id,
       data.nurse_id || null,
-      data.purpose || data.reason || data.visit_type || '',
+      data.purpose || data.reason || '',
       normalizeStatus(data.status),
       id,
     ]

@@ -6,7 +6,7 @@ import {
   X
 } from "lucide-react";
 import { useState } from "react";
-import { hasPermission, PERMISSIONS } from "../auth/accessControl";
+import { hasPermission, PERMISSIONS, ROLES } from "../auth/accessControl";
 import FormField from "../components/common/FormField";
 import PageHeading from "../components/common/PageHeading";
 import PanelHeader from "../components/common/PanelHeader";
@@ -60,8 +60,10 @@ function validateNurse(nurse) {
 }
 
 export default function NursesPage() {
-  const { user } = useAuth();
+  const { refreshSession, user } = useAuth();
   const canManageNurses = hasPermission(user?.role, PERMISSIONS.NURSES_MANAGE);
+  const isNurseAccount = user?.role === ROLES.NURSE;
+  const canRegisterNurse = canManageNurses || (isNurseAccount && !user?.profileId);
   const { nurses, addNurse } = useMedLink();
   const { showToast } = useToast();
   const [form, setForm] = useState(emptyNurse);
@@ -101,6 +103,9 @@ export default function NursesPage() {
     setStatus("Registering nurse...");
     try {
       const record = await addNurse(form);
+      if (isNurseAccount) {
+        await refreshSession();
+      }
       setForm(emptyNurse);
       setStatus(`${record.nurseId} was registered successfully.`);
       showToast(
@@ -125,12 +130,12 @@ export default function NursesPage() {
     <section className="view" aria-labelledby="nursesHeading">
       <PageHeading
         eyebrow="Nursing team"
-        title={canManageNurses ? "Nurse Registration" : "Nurse Directory"}
+        title={canRegisterNurse ? "Nurse Registration" : "Nurse Directory"}
         titleId="nursesHeading"
-        description={canManageNurses
+        description={canRegisterNurse
           ? "Register nursing professionals and record their contact details."
           : "Review nursing professionals and their contact details."}
-        actions={canManageNurses ? (
+        actions={canRegisterNurse ? (
           <div className="page-badge">
             <HeartPulse />
             Nurses join the clinical directory
@@ -138,7 +143,7 @@ export default function NursesPage() {
         ) : null}
       />
 
-      {canManageNurses && <section className="form-panel">
+      {canRegisterNurse && <section className="form-panel">
         <div className="section-heading">
           <span className="section-icon section-icon-green"><CircleUserRound /></span>
           <div>
@@ -230,6 +235,18 @@ export default function NursesPage() {
           </div>
         </form>
       </section>}
+
+      {isNurseAccount && user?.profileId && (
+        <section className="form-panel registration-complete">
+          <div className="section-heading">
+            <span className="section-icon section-icon-green"><HeartPulse /></span>
+            <div>
+              <h3>Registration complete</h3>
+              <p>Your nurse profile is linked to this account as {user.profileId}.</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="panel table-panel">
         <PanelHeader

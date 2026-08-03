@@ -19,7 +19,6 @@ function toApiAppointment(appointment) {
     nurse_id: appointment.nurseId ?? appointment.nurse_id,
     appointment_date: appointment.date ?? appointment.appointment_date,
     appointment_time: appointment.time ?? appointment.appointment_time,
-    visit_type: appointment.visitType ?? appointment.visit_type,
     reason: appointment.reason,
     status: toApiAppointmentStatus(appointment.status)
   };
@@ -34,8 +33,7 @@ function normalizeAppointment(appointment = {}) {
     nurseId: appointment.nurseId ?? appointment.nurse_id ?? "",
     date: normalizeDate(appointment.date ?? appointment.appointment_date),
     time: appointment.time ?? appointment.appointment_time ?? "",
-    visitType: appointment.visitType ?? appointment.visit_type ?? "",
-    reason: appointment.reason ?? "",
+    reason: appointment.reason ?? appointment.purpose ?? "",
     status: normalizeAppointmentStatus(appointment.status) ?? "completed"
   };
 }

@@ -3,10 +3,11 @@ import {
   ChartPie,
   ChartSpline,
   CircleCheckBig,
+  Clock3,
   ClipboardList,
   Download,
   Stethoscope,
-  UsersRound
+  UserX
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import BarChart from "../components/charts/BarChart";
@@ -34,19 +35,25 @@ export default function ReportsPage() {
     const startDate = dates[0];
     const scoped = appointments.filter(appointment =>
       appointment.date >= startDate &&
-      appointment.date <= endDate &&
-      appointment.status !== APPOINTMENT_STATUS.CANCELLED
+      appointment.date <= endDate
     );
+    const active = scoped.filter(item => item.status !== APPOINTMENT_STATUS.CANCELLED);
     const attended = scoped.filter(item => item.status === APPOINTMENT_STATUS.COMPLETED);
-    const attendanceRate = scoped.length ? Math.round((attended.length / scoped.length) * 100) : 0;
+    const noShows = scoped.filter(item => item.status === APPOINTMENT_STATUS.NO_SHOW);
+    const scheduled = scoped.filter(item => item.status === APPOINTMENT_STATUS.SCHEDULED);
+    const resolved = attended.length + noShows.length;
+    const attendanceRate = resolved ? Math.round((attended.length / resolved) * 100) : 0;
     const doctorMetrics = doctors.map(doctor => {
-      const doctorAppointments = scoped.filter(item => item.doctorId === doctor.doctorId);
+      const doctorAppointments = active.filter(item => item.doctorId === doctor.doctorId);
       const completed = doctorAppointments.filter(item => item.status === APPOINTMENT_STATUS.COMPLETED).length;
+      const missed = doctorAppointments.filter(item => item.status === APPOINTMENT_STATUS.NO_SHOW).length;
+      const outcomeCount = completed + missed;
       return {
         doctor,
         count: doctorAppointments.length,
-        attendanceRate: doctorAppointments.length
-          ? Math.round((completed / doctorAppointments.length) * 100)
+        completed,
+        attendanceRate: outcomeCount
+          ? Math.round((completed / outcomeCount) * 100)
           : 0
       };
     });
@@ -68,7 +75,7 @@ export default function ReportsPage() {
       : dates.map(date => ({
           dates: [date],
           label: formatDate(date, { weekday: "short" }),
-          value: scoped.filter(item => item.date === date).length
+          value: active.filter(item => item.date === date).length
         }));
 
     const trendData = groupedDates.map(group => ({
@@ -83,7 +90,10 @@ export default function ReportsPage() {
       dates,
       startDate,
       scoped,
+      active,
       attended,
+      noShows,
+      scheduled,
       attendanceRate,
       doctorMetrics,
       topDoctor,
@@ -95,13 +105,21 @@ export default function ReportsPage() {
 
   function exportReport() {
     const rows = [
-      ["Doctor Name", "Specialization", "Number of Appointments", "Attendance Rate"],
+      ["Doctor Name", "Specialization", "Appointments", "Completed", "Attendance Rate"],
       ...report.doctorMetrics.map(metric => [
         doctorName(metric.doctor),
         metric.doctor.specialization,
         metric.count,
+        metric.completed,
         `${metric.attendanceRate}%`
-      ])
+      ]),
+      [],
+      ["Report Summary", "Value"],
+      ["Total bookings", report.scoped.length],
+      ["Completed visits", report.attended.length],
+      ["Scheduled visits", report.scheduled.length],
+      ["No-shows", report.noShows.length],
+      ["Cancelled visits", report.scoped.length - report.active.length]
     ];
     const csv = rows
       .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(","))
@@ -135,7 +153,7 @@ export default function ReportsPage() {
             </label>
             <label>
               <span>Ending</span>
-              <input type="date" value={endDate} onChange={event => setEndDate(event.target.value)} />
+              <input type="date" max={today()} value={endDate} onChange={event => setEndDate(event.target.value)} />
             </label>
             <button className="button button-secondary" type="button" onClick={exportReport}>
               <Download />
@@ -147,17 +165,25 @@ export default function ReportsPage() {
 
       <div className="stat-grid report-stat-grid">
         <StatCard
-          icon={UsersRound}
-          label="Total Attendance"
-          value={report.scoped.length}
+          icon={CircleCheckBig}
+          tone="green"
+          label="Completed Visits"
+          value={report.attended.length}
           caption={`${formatDate(report.startDate)} to ${formatDate(endDate)}`}
         />
         <StatCard
-          icon={CircleCheckBig}
-          tone="green"
+          icon={Clock3}
+          tone="amber"
+          label="Scheduled Visits"
+          value={report.scheduled.length}
+          caption={`${report.scoped.length} total bookings`}
+        />
+        <StatCard
+          icon={UserX}
+          tone="red"
           label="Attendance Rate"
           value={`${report.attendanceRate}%`}
-          caption="Completed visits"
+          caption={`${report.noShows.length} no-show${report.noShows.length === 1 ? "" : "s"}`}
         />
         <StatCard
           icon={Stethoscope}
@@ -171,12 +197,12 @@ export default function ReportsPage() {
 
       <div className="report-grid">
         <section className="panel bar-chart-panel">
-          <PanelHeader icon={ChartColumnBig} title="Patients per Day" description="Daily appointment volume for the selected period" />
+          <PanelHeader icon={ChartColumnBig} title="Appointments per Day" description="Non-cancelled booking volume for the selected period" />
           <BarChart data={report.groupedDates} monthly={period === "monthly"} />
         </section>
 
         <section className="panel utilization-panel">
-          <PanelHeader icon={ChartPie} title="Doctor Utilization" description="Share of total clinic appointments" />
+          <PanelHeader icon={ChartPie} title="Doctor Utilization" description="Share of non-cancelled clinic appointments" />
           <DonutChart metrics={report.doctorMetrics} />
         </section>
 

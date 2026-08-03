@@ -409,8 +409,8 @@ GET /api/billing/patient/:patientId
 | Patients | View/manage | View | View | Own profile |
 | Doctors | View/manage | View | View | View |
 | Nurses | View/manage | View | View | No access |
-| Appointments | View/manage | Assigned/update | Assigned/update | Own/create |
-| Billing | View/manage | No access | No access | Own records |
+| Appointments | View/update status | Assigned/view | Assigned/view | Own/create |
+| Billing | View/manage | No access | No access | No access |
 | Reports | View | View | No access | No access |
 | Medical records | View/manage | View | View/update | Own records |
 
@@ -621,9 +621,9 @@ Set-Location C:\Users\PC\Medlink-Backend
 npm start
 ```
 
-### Account assignment returns `403`
+### Account registration
 
-Only a signed-in `staff` account can call `POST /api/auth/register`.
+The public registration endpoint supports administrative staff, doctor, nurse, and patient accounts. Doctor, nurse, and patient accounts complete their linked profile registration after signing in.
 
 ### Account assignment returns `409`
 

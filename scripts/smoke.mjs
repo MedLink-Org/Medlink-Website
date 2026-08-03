@@ -76,7 +76,6 @@ function createMockApi() {
       doctor_id: appointment.doctorId,
       appointment_date: appointment.date,
       appointment_time: appointment.time,
-      visit_type: appointment.visitType,
       reason: appointment.reason,
       status: appointment.status
     })),
@@ -200,6 +199,23 @@ function createMockApi() {
         sendJson(response, 200, { data: records });
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/appointments") {
+        const records = state.currentUser?.role === "patient"
+          ? state.appointments.filter(
+            item => String(item.patient_id) === String(state.currentUser.profile_id)
+          )
+          : state.currentUser?.role === "doctor"
+            ? state.appointments.filter(
+              item => String(item.doctor_id) === String(state.currentUser.profile_id)
+            )
+            : state.currentUser?.role === "nurse"
+              ? state.appointments.filter(
+                item => String(item.nurse_id) === String(state.currentUser.profile_id)
+              )
+              : state.appointments;
+        sendJson(response, 200, { data: records });
+        return;
+      }
 
       const collection = collections.get(url.pathname);
 
@@ -231,6 +247,13 @@ function createMockApi() {
           ...await readJson(request)
         };
         state.doctors.push(record);
+        if (state.currentUser?.role === "doctor" && !state.currentUser.profile_id) {
+          state.currentUser = {
+            ...state.currentUser,
+            full_name: `${record.first_name} ${record.last_name}`,
+            profile_id: record.doctor_id
+          };
+        }
         sendJson(response, 201, { data: { doctor: record } });
         return;
       }
@@ -238,6 +261,13 @@ function createMockApi() {
       if (request.method === "POST" && url.pathname === "/api/nurses") {
         const record = await readJson(request);
         state.nurses.push(record);
+        if (state.currentUser?.role === "nurse" && !state.currentUser.profile_id) {
+          state.currentUser = {
+            ...state.currentUser,
+            full_name: `${record.first_name} ${record.last_name}`,
+            profile_id: record.nurse_id
+          };
+        }
         sendJson(response, 201, { data: { nurse: record } });
         return;
       }
@@ -413,6 +443,11 @@ async function run() {
     await screenshot(page, "login-desktop");
     await page.locator("#authEmail").fill("amara.okafor@medlink.example");
     await page.locator("#authPassword").fill("SecurePass123!");
+    await page.getByRole("button", { name: "Show password", exact: true }).click();
+    assert(
+      await page.locator("#authPassword").getAttribute("type") === "text",
+      "Show password did not reveal the sign-in password."
+    );
     await page.locator(".auth-form").getByRole("button", { name: "Sign In", exact: true }).click();
     await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
     await page.getByText("Amara Okafor", { exact: true }).waitFor();
@@ -476,23 +511,11 @@ async function run() {
     await screenshot(page, "nurses-desktop");
 
     await navigate(page, "/appointments", "Appointment Management");
-    await page.locator("#appointmentPatient").selectOption("P007");
-    await page.locator("#appointmentDoctor").selectOption("D05");
-    await page.locator("#appointmentNurse").selectOption("N03");
-    await page.locator("#appointmentTime").fill("17:45");
-    await page.locator("#appointmentType").selectOption("Follow-up");
-    await page.locator("#appointmentReason").fill("Post-treatment review");
-    await page.getByRole("button", { name: "Confirm Appointment" }).click();
-    await page.getByText("Appointment booked", { exact: true }).waitFor();
     assert(
-      mockApi.state.appointments.at(-1)?.nurse_id === "N03",
-      "Optional nurse assignment was not sent to the API."
+      await page.getByRole("button", { name: "Confirm Appointment" }).count() === 0,
+      "Administrative staff can see the patient-only appointment form."
     );
-    assert(
-      mockApi.state.appointments.at(-1)?.status === "scheduled",
-      "Appointment status was not sent in the backend's accepted format."
-    );
-    let appointmentRow = page.locator("tbody tr").filter({ hasText: "Zara Mensah" });
+    let appointmentRow = page.locator("tbody tr").filter({ hasText: "A014 - Cardiology review" });
     await appointmentRow.waitFor();
     await appointmentRow.getByRole("button", { name: "Complete" }).click();
     await appointmentRow.getByText("Completed", { exact: true }).waitFor();
@@ -596,10 +619,16 @@ async function run() {
       await page.getByRole("button", { name: "Register Nurse", exact: true }).count() === 0,
       "Doctor accounts can see the nurse registration control."
     );
+    await navigate(page, "/appointments", "Assigned Appointments");
+    assert(
+      await page.getByRole("button", { name: "Complete", exact: true }).count() === 0,
+      "Doctor accounts can change appointment status."
+    );
     assert(
       await page.getByRole("link", { name: /Billing/ }).count() === 0,
       "Doctor accounts can see the billing navigation item."
     );
+    await navigate(page, "/nurses", "Nurse Directory");
     mockApi.state.dataUnavailable = true;
     await page.reload();
     await page.getByRole("heading", { name: "Nurse Directory", exact: true }).waitFor();
@@ -617,18 +646,22 @@ async function run() {
     mockApi.state.currentUser = null;
     await page.getByLabel("Authentication method").getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByRole("heading", { name: "Create your MedLink account", exact: true }).waitFor();
+    assert(
+      await page.locator("#authRole option[value='staff']").textContent() === "Administrative Staff",
+      "Administrative staff is missing from the account type list."
+    );
     await page.locator("#authEmail").fill("grace.patient@example.com");
     await page.locator("#authPassword").fill("PatientPass123!");
     await page.locator("#authConfirmPassword").fill("PatientPass123!");
     await page.locator(".auth-form").getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByRole("heading", { name: "Patient Registration", exact: true }).waitFor();
     assert(
-      await page.getByRole("link", { name: /Dashboard/ }).count() === 0,
-      "Patient accounts can see dashboard navigation."
+      await page.getByRole("link", { name: /Dashboard/ }).count() === 1,
+      "Patient accounts cannot see dashboard navigation."
     );
     assert(
-      await page.getByRole("link", { name: /Appointments/ }).count() === 0,
-      "Patient accounts can see appointment navigation."
+      await page.getByRole("link", { name: /Appointments/ }).count() === 1,
+      "Patient accounts cannot see appointment navigation."
     );
     assert(
       await page.getByText("Patient Directory", { exact: true }).count() === 0,
@@ -643,21 +676,93 @@ async function run() {
     await page.getByRole("button", { name: "Register Patient", exact: true }).click();
     await page.getByRole("heading", { name: "Registration complete", exact: true }).waitFor();
     await page.getByText("Your patient profile is linked to this account as P008.", { exact: true }).waitFor();
+    await page.getByRole("link", { name: /Appointments/ }).click();
+    await page.getByRole("heading", { name: "My Appointments", exact: true }).waitFor();
+    assert(
+      await page.locator("#appointmentPatient").count() === 0,
+      "Patient appointment booking asks the patient to select another profile."
+    );
+    assert(
+      await page.locator("#appointmentStatus").count() === 0,
+      "Patient appointment booking exposes the administrator status control."
+    );
+    await page.locator("#appointmentDoctor").selectOption("D04");
+    await page.locator("#appointmentTime").fill("16:30");
+    await page.locator("#appointmentReason").fill("Patient-requested consultation");
+    await page.getByRole("button", { name: "Confirm Appointment" }).click();
+    await page.getByText("Appointment booked", { exact: true }).waitFor();
+    assert(
+      mockApi.state.appointments.at(-1)?.patient_id === "P008",
+      "Patient appointment booking was not linked to the signed-in patient."
+    );
+    assert(
+      await page.getByRole("button", { name: "Complete", exact: true }).count() === 0,
+      "Patient accounts can change appointment status."
+    );
+    await page.getByRole("link", { name: /Dashboard/ }).click();
+    await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
+    await page.getByText("Patient-requested consultation", { exact: true }).waitFor();
     await page.getByRole("button", { name: /Grace Nwosu/ }).click();
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
     await page.locator("#authEmail").fill("grace.patient@example.com");
     await page.locator("#authPassword").fill("PatientPass123!");
     await page.locator(".auth-form").getByRole("button", { name: "Sign In", exact: true }).click();
-    await page.getByRole("heading", { name: "Patient Registration", exact: true }).waitFor();
-    await page.getByRole("heading", { name: "Registration complete", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
+    await page.getByText("Patient-requested consultation", { exact: true }).waitFor();
     await page.goto(baseUrl);
-    await page.getByRole("heading", { name: "Patient Registration", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Dashboard", exact: true }).waitFor();
     await page.getByRole("button", { name: /Grace Nwosu/ }).click();
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
     await page.goto(`${baseUrl}/patients`);
     await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
+
+    mockApi.state.currentUser = null;
+    await page.getByLabel("Authentication method").getByRole("button", { name: "Create Account", exact: true }).click();
+    await page.locator("#authRole").selectOption("doctor");
+    await page.locator("#authEmail").fill("new.doctor@example.com");
+    await page.locator("#authPassword").fill("DoctorPass123!");
+    await page.locator("#authConfirmPassword").fill("DoctorPass123!");
+    await page.locator(".auth-form").getByRole("button", { name: "Create Account", exact: true }).click();
+    await page.getByRole("heading", { name: "Doctor Registration", exact: true }).waitFor();
+    await page.locator("#doctorFirstName").fill("Kelechi");
+    await page.locator("#doctorLastName").fill("Okoro");
+    await page.locator("#doctorDob").fill("1987-04-12");
+    await page.locator("#doctorSpecialization").fill("Internal Medicine");
+    await page.locator("#doctorPhone").fill("+234 806 555 0102");
+    await page.locator("#doctorEmploymentDate").fill("2021-02-01");
+    await page.locator("#doctorAddress").fill("11 Hospital Road, Owerri");
+    await page.getByRole("button", { name: "Register Doctor" }).click();
+    await page.getByRole("heading", { name: "Registration complete", exact: true }).waitFor();
+    assert(
+      String(mockApi.state.currentUser?.profile_id).startsWith("D"),
+      "Doctor registration did not link the clinician account."
+    );
+    await page.getByRole("button", { name: /Kelechi Okoro/ }).click();
+    await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
+    await page.getByRole("heading", { name: "Sign in to MedLink", exact: true }).waitFor();
+
+    mockApi.state.currentUser = null;
+    await page.getByLabel("Authentication method").getByRole("button", { name: "Create Account", exact: true }).click();
+    await page.locator("#authRole").selectOption("nurse");
+    await page.locator("#authEmail").fill("new.nurse@example.com");
+    await page.locator("#authPassword").fill("NursePass123!");
+    await page.locator("#authConfirmPassword").fill("NursePass123!");
+    await page.locator(".auth-form").getByRole("button", { name: "Create Account", exact: true }).click();
+    await page.getByRole("heading", { name: "Nurse Registration", exact: true }).waitFor();
+    await page.locator("#nurseFirstName").fill("Ifeoma");
+    await page.locator("#nurseLastName").fill("Eze");
+    await page.locator("#nurseDob").fill("1991-06-15");
+    await page.locator("#nursePhone").fill("+234 805 555 0194");
+    await page.locator("#nurseAddress").fill("6 Wetheral Road, Owerri");
+    await page.locator("#nurseEmploymentDate").fill("2019-10-07");
+    await page.getByRole("button", { name: "Register Nurse" }).click();
+    await page.getByRole("heading", { name: "Registration complete", exact: true }).waitFor();
+    assert(
+      String(mockApi.state.currentUser?.profile_id).startsWith("N"),
+      "Nurse registration did not link the clinician account."
+    );
 
     console.log("Smoke test passed: patient signup, login, role permissions, bearer authentication, protected routes, workflows, staff-only offline records, logout, export, and mobile navigation.");
     console.log(`Screenshots: ${artifactDir}`);
