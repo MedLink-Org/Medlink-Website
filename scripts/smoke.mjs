@@ -204,15 +204,7 @@ function createMockApi() {
           ? state.appointments.filter(
             item => String(item.patient_id) === String(state.currentUser.profile_id)
           )
-          : state.currentUser?.role === "doctor"
-            ? state.appointments.filter(
-              item => String(item.doctor_id) === String(state.currentUser.profile_id)
-            )
-            : state.currentUser?.role === "nurse"
-              ? state.appointments.filter(
-                item => String(item.nurse_id) === String(state.currentUser.profile_id)
-              )
-              : state.appointments;
+          : state.appointments;
         sendJson(response, 200, { data: records });
         return;
       }
@@ -621,6 +613,20 @@ async function run() {
     );
     await navigate(page, "/appointments", "Assigned Appointments");
     assert(
+      await page.locator("tbody tr").count() === mockApi.state.appointments.length,
+      "Doctor accounts cannot see the complete appointment list."
+    );
+    for (const statusClass of ["scheduled", "completed", "cancelled", "no-show"]) {
+      assert(
+        await page.locator(`tbody .status-${statusClass}`).count() > 0,
+        `Doctor accounts cannot see ${statusClass} appointments.`
+      );
+    }
+    assert(
+      await page.getByRole("button", { name: "Confirm Appointment" }).count() === 0,
+      "Doctor accounts can see the patient-only appointment form."
+    );
+    assert(
       await page.getByRole("button", { name: "Complete", exact: true }).count() === 0,
       "Doctor accounts can change appointment status."
     );
@@ -762,6 +768,19 @@ async function run() {
     assert(
       String(mockApi.state.currentUser?.profile_id).startsWith("N"),
       "Nurse registration did not link the clinician account."
+    );
+    await navigate(page, "/appointments", "Assigned Appointments");
+    assert(
+      await page.locator("tbody tr").count() === mockApi.state.appointments.length,
+      "Nurse accounts cannot see the complete appointment list."
+    );
+    assert(
+      await page.getByRole("button", { name: "Confirm Appointment" }).count() === 0,
+      "Nurse accounts can see the patient-only appointment form."
+    );
+    assert(
+      await page.getByRole("button", { name: "Complete", exact: true }).count() === 0,
+      "Nurse accounts can change appointment status."
     );
 
     console.log("Smoke test passed: patient signup, login, role permissions, bearer authentication, protected routes, workflows, staff-only offline records, logout, export, and mobile navigation.");

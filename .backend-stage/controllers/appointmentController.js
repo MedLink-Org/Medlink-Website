@@ -14,12 +14,6 @@ const scopedAppointments = (user) => {
   if (user.role === 'patient') {
     return appointmentModel.getAppointmentsByPatientId(user.profile_id);
   }
-  if (user.role === 'doctor') {
-    return appointmentModel.getAppointmentsByDoctorId(user.profile_id);
-  }
-  if (user.role === 'nurse') {
-    return appointmentModel.getAppointmentsByNurseId(user.profile_id);
-  }
   return appointmentModel.getAllAppointment();
 };
 
