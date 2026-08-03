@@ -7,9 +7,18 @@ const canAccessPatient = (user, patientId) =>
   || String(user.profile_id) === String(patientId);
 
 const canAccessAppointment = (user, appointment) => {
-  if (['staff', 'doctor', 'nurse'].includes(user?.role)) return true;
+  if (user?.role === 'staff') return true;
+  if (user?.role === 'doctor') {
+    return Boolean(user.profile_id)
+      && String(user.profile_id) === String(appointment.doctor_id);
+  }
+  if (user?.role === 'nurse') {
+    return Boolean(user.profile_id)
+      && String(user.profile_id) === String(appointment.nurse_id);
+  }
   if (user?.role === 'patient') {
-    return String(user.profile_id) === String(appointment.patient_id);
+    return Boolean(user.profile_id)
+      && String(user.profile_id) === String(appointment.patient_id);
   }
   return false;
 };

@@ -19,24 +19,25 @@ MedLink JWT used on every protected API request.
 4. Review existing accounts migrated to the `staff` role.
 5. Restart the backend.
 
-## Create Patient Account
+## Create an Account
 
-Patients can create an account using an existing, unclaimed Patient ID:
+Patients, doctors, and nurses can create their own account:
 
 ```http
 POST /api/auth/register
 Content-Type: application/json
 
 {
-  "email": "patient@example.com",
+  "email": "doctor@example.com",
   "password": "secure-password",
-  "profile_id": "P001"
+  "role": "doctor"
 }
 ```
 
-The backend forces the `patient` role, verifies that the patient record exists,
-and returns a MedLink session. Public signup cannot create staff, doctor, or
-nurse accounts.
+Valid self-registration roles are `patient`, `doctor`, and `nurse`. After
+account creation, the user completes the matching patient, doctor, or nurse
+registration form. Creating that profile links its generated clinic ID to the
+signed-in account.
 
 ## Assign Privileged Account
 
@@ -55,8 +56,8 @@ Authorization: Bearer <staff-token>
 }
 ```
 
-Valid roles are `staff`, `doctor`, `nurse`, and `patient`. Doctor, nurse, and
-patient accounts require a linked clinic `profile_id`.
+Valid roles are `staff`, `doctor`, `nurse`, and `patient`. Staff can link an
+existing clinic `profile_id` when provisioning an account.
 
 ## Login
 
@@ -93,4 +94,5 @@ Authorization: Bearer <medlink-jwt>
 ```
 
 `GET /api/auth/me` returns the signed-in account. Backend route authorization
-and resource ownership checks enforce the role and linked profile.
+and resource ownership checks enforce the role and linked profile. Doctors and
+nurses only receive appointments assigned to their own linked profile.

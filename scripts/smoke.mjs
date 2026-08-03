@@ -448,6 +448,17 @@ async function run() {
     assert(await page.locator(".stat-card").count() === 4, "Dashboard stat cards did not render.");
     assert(await page.locator(".appointment-row").count() === 5, "Today's seeded appointments did not render.");
     await screenshot(page, "dashboard-desktop");
+    await page.getByRole("button", { name: /Notifications, 6 recent registrations/ }).click();
+    const registrationPopover = page.locator(".notification-popover");
+    await registrationPopover.waitFor();
+    assert(
+      await registrationPopover.locator(".registration-notification").count() === 6,
+      "The notification panel did not show the latest registrations."
+    );
+    await registrationPopover.getByText("Samuel Udo", { exact: true }).waitFor();
+    await registrationPopover.getByText("P006", { exact: true }).waitFor();
+    await screenshot(page, "registrations-notification-desktop");
+    await page.getByRole("button", { name: /Notifications, 6 recent registrations/ }).click();
 
     await navigate(page, "/patients", "Patient Registration");
     await page.locator("#firstName").fill("Zara");
